@@ -1644,63 +1644,58 @@ function getHVACTotal() {
    ========================================================= */
 
 function imageToDataURL(url) {
+    return new Promise((resolve, reject) => {
 
-    return new Promise(
-        (resolve, reject) => {
+        const img = new Image();
 
-            const img =
-                new Image();
+        // IMPORTANT:
+        // Do NOT use crossOrigin here.
+        // header.jpeg and footer.jpeg are hosted
+        // on the same GitHub Pages website.
 
-            img.crossOrigin =
-                "Anonymous";
+        img.onload = function() {
 
-            img.onload =
-                function() {
+            const canvas =
+                document.createElement("canvas");
 
-                    const canvas =
-                        document.createElement(
-                            "canvas"
-                        );
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
 
-                    canvas.width =
-                        img.naturalWidth;
+            const ctx =
+                canvas.getContext("2d");
 
-                    canvas.height =
-                        img.naturalHeight;
+            ctx.drawImage(
+                img,
+                0,
+                0
+            );
 
-                    const ctx =
-                        canvas.getContext(
-                            "2d"
-                        );
+            try {
 
-                    ctx.drawImage(
-                        img,
-                        0,
-                        0
-                    );
+                resolve(
+                    canvas.toDataURL("image/jpeg")
+                );
 
-                    resolve(
-                        canvas.toDataURL(
-                            "image/jpeg"
-                        )
-                    );
-                };
+            } catch (error) {
 
-            img.onerror =
-                function() {
+                reject(error);
 
-                    reject(
-                        new Error(
-                            "Unable to load " +
-                            url
-                        )
-                    );
+            }
+        };
 
-                };
+        img.onerror = function() {
 
-            img.src = url;
-        }
-    );
+            reject(
+                new Error(
+                    "Unable to load image: " + url
+                )
+            );
+
+        };
+
+        // Load directly from the same folder
+        img.src = url;
+    });
 }
 
 
