@@ -1,1707 +1,318 @@
-/* ============================================================
+/* =========================================================
    ONSITE QUOTATION
-   HVAC QUOTATION SYSTEM
-   Moses Ntella Taa
-============================================================ */
+   HVAC QUOTATION WEB APPLICATION
+   ========================================================= */
+
+"use strict";
+
+/* =========================================================
+   PDF LIBRARY CHECK
+   ========================================================= */
+
+let jsPDFConstructor = null;
+
+if (
+    window.jspdf &&
+    typeof window.jspdf.jsPDF === "function"
+) {
+    jsPDFConstructor = window.jspdf.jsPDF;
+}
 
 
-/* ============================================================
-   GLOBAL DATA
-============================================================ */
+/* =========================================================
+   GLOBAL QUOTATION DATA
+   ========================================================= */
 
-const state = {
-
+let quotation = {
     rooms: [],
-
-    otherItems: [],
-
-    copperRate: 0,
-
+    copperRate: 3200,
     drainageRate: 0,
+    additionalItems: [],
 
-    currentPage: "page1"
+    acPrices: [],
 
+    clientName: "",
+    installationLocation: "",
+    salesPerson: "",
+    salesPhone: "",
+    salesEmail: ""
 };
 
 
-/* ============================================================
+/* =========================================================
    AC CAPACITIES
-============================================================ */
+   ========================================================= */
 
 const AC_CAPACITIES = [
-    6000,
     9000,
     12000,
     18000,
     24000,
+    36000,
     48000
 ];
 
 
-/* ============================================================
-   INITIALIZE
-============================================================ */
-
-document.addEventListener("DOMContentLoaded", () => {
-
-    addRoomInput();
-
-    updateRoomPreview();
-
-    setupEventListeners();
-
-    updateProgress("page1");
-
-});
-
-
-/* ============================================================
-   EVENT LISTENERS
-============================================================ */
-
-function setupEventListeners() {
-
-    document
-        .getElementById("addRoomBtn")
-        .addEventListener("click", addRoomInput);
-
-
-    document
-        .getElementById("roomsProceedBtn")
-        .addEventListener("click", saveRooms);
-
-
-    document
-        .getElementById("dimensionsPreviewBtn")
-        .addEventListener("click", previewDimensions);
-
-
-    document
-        .getElementById("dimensionsProceedBtn")
-        .addEventListener("click", () => {
-
-            renderCopperInputs();
-
-            goToPage("page3");
-
-        });
-
-
-    document
-        .getElementById("copperPreviewBtn")
-        .addEventListener("click", previewCopper);
-
-
-    document
-        .getElementById("copperProceedBtn")
-        .addEventListener("click", () => {
-
-            renderFactorInputs();
-
-            goToPage("page4");
-
-        });
-
-
-    document
-        .getElementById("factorPreviewBtn")
-        .addEventListener("click", previewFactors);
-
-
-    document
-        .getElementById("factorProceedBtn")
-        .addEventListener("click", () => {
-
-            renderACPriceInputs();
-
-            goToPage("page5");
-
-        });
-
-
-    document
-        .getElementById("acPricePreviewBtn")
-        .addEventListener("click", previewACPrices);
-
-
-    document
-        .getElementById("acPriceProceedBtn")
-        .addEventListener("click", () => {
-
-            renderDrainageInputs();
-
-            goToPage("page6");
-
-        });
-
-
-    document
-        .getElementById("drainagePreviewBtn")
-        .addEventListener("click", previewDrainage);
-
-
-    document
-        .getElementById("drainageProceedBtn")
-        .addEventListener("click", () => {
-
-            goToPage("page7");
-
-        });
-
-
-    document
-        .getElementById("addOtherItemBtn")
-        .addEventListener("click", addOtherItem);
-
-
-    document
-        .getElementById("generateQuotationBtn")
-        .addEventListener("click", generateQuotationPreview);
-
-
-    document
-        .getElementById("downloadPdfBtn")
-        .addEventListener("click", generatePDF);
-
-
-    [
-        "otherItemQty",
-        "otherItemPrice"
-    ].forEach(id => {
-
-        document
-            .getElementById(id)
-            .addEventListener("input", updateOtherItemTotal);
-
-    });
-
-}
-
-
-/* ============================================================
+/* =========================================================
    PAGE NAVIGATION
-============================================================ */
+   ========================================================= */
 
-function goToPage(pageId) {
+function showPage(pageNumber) {
 
     document
         .querySelectorAll(".page")
         .forEach(page => {
-
             page.classList.remove("active");
-
         });
 
+    const page =
+        document.getElementById(
+            "page" + pageNumber
+        );
 
-    const page = document.getElementById(pageId);
-
-    if (page) {
-
-        page.classList.add("active");
-
-        state.currentPage = pageId;
-
-        updateProgress(pageId);
-
-        window.scrollTo({
-            top: 0,
-            behavior: "smooth"
-        });
-
+    if (!page) {
+        console.warn(
+            "Page not found:",
+            pageNumber
+        );
+        return;
     }
 
+    page.classList.add("active");
+
+    window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+    });
 }
 
 
-/* ============================================================
-   PROGRESS
-============================================================ */
+/* =========================================================
+   FORMATTING
+   ========================================================= */
 
-function updateProgress(pageId) {
+function money(value) {
 
-    const pageNumbers = {
+    const amount =
+        Number(value) || 0;
 
-        page1: 1,
-
-        page2: 2,
-        page2Preview: 2,
-
-        page3: 3,
-        page3Preview: 3,
-
-        page4: 4,
-        page4Preview: 4,
-
-        page5: 5,
-        page5Preview: 5,
-
-        page6: 6,
-        page6Preview: 6,
-
-        page7: 7,
-
-        page8: 8
-
-    };
-
-
-    const number =
-        pageNumbers[pageId] || 1;
-
-
-    const percentage =
-        (number / 8) * 100;
-
-
-    document
-        .getElementById("progressFill")
-        .style.width =
-        percentage + "%";
-
-
-    document
-        .getElementById("stepText")
-        .textContent =
-        `Step ${number} of 8`;
-
+    return (
+        "KES " +
+        amount.toLocaleString(
+            "en-KE",
+            {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }
+        )
+    );
 }
 
 
-/* ============================================================
-   ROOM INPUTS
-============================================================ */
+function number(value) {
 
-function addRoomInput(value = "") {
+    const amount =
+        Number(value) || 0;
+
+    return amount.toLocaleString(
+        "en-KE",
+        {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        }
+    );
+}
+
+
+function escapeHTML(value) {
+
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+
+/* =========================================================
+   STEP 1
+   ADD ROOMS
+   ========================================================= */
+
+function addRoomInput() {
 
     const container =
-        document.getElementById("roomInputs");
+        document.getElementById(
+            "roomInputContainer"
+        );
 
+    if (!container) return;
 
-    const card =
+    const row =
         document.createElement("div");
 
-    card.className =
-        "room-input-card";
+    row.className =
+        "input-row room-input-row";
 
-
-    card.innerHTML = `
-
-        <div>
-
-            <label>
-                Room Name
-            </label>
-
-            <input
-                type="text"
-                class="room-name-input"
-                placeholder="e.g. Master Bedroom"
-                value="${escapeHTML(value)}"
-            >
-
-        </div>
+    row.innerHTML = `
+        <input
+            type="text"
+            class="room-name-input"
+            placeholder="e.g. Bedroom 2"
+        >
 
         <button
             type="button"
-            class="remove-room"
+            class="remove-input"
+            onclick="removeRoomInput(this)"
         >
-            Remove
+            ×
         </button>
-
     `;
 
+    container.appendChild(row);
 
-    card
-        .querySelector(".remove-room")
-        .addEventListener("click", () => {
+    const input =
+        row.querySelector("input");
 
-            card.remove();
-
-            updateRoomPreview();
-
-        });
-
-
-    card
-        .querySelector("input")
-        .addEventListener("input", updateRoomPreview);
-
-
-    container.appendChild(card);
-
-    updateRoomPreview();
-
+    if (input) {
+        input.focus();
+    }
 }
 
 
-/* ============================================================
-   SAVE ROOMS
-============================================================ */
+function removeRoomInput(button) {
+
+    const rows =
+        document.querySelectorAll(
+            ".room-input-row"
+        );
+
+    if (rows.length <= 1) {
+
+        const input =
+            button.parentElement
+                .querySelector("input");
+
+        if (input) {
+            input.value = "";
+        }
+
+        return;
+    }
+
+    button.parentElement.remove();
+}
+
 
 function saveRooms() {
 
     const inputs =
-        document.querySelectorAll(".room-name-input");
-
+        document.querySelectorAll(
+            ".room-name-input"
+        );
 
     const names = [];
-
 
     inputs.forEach(input => {
 
         const name =
             input.value.trim();
 
-
         if (name) {
-
             names.push(name);
-
         }
 
     });
 
-
     if (names.length === 0) {
 
-        alert("Please add at least one room.");
+        alert(
+            "Please enter at least one room."
+        );
 
         return;
-
     }
 
+    quotation.rooms =
+        names.map(name => ({
 
-    state.rooms =
-        names.map((name, index) => ({
-
-            id: Date.now() + index,
-
-            name,
+            name: name,
 
             length: 0,
-
             width: 0,
-
             area: 0,
 
-            copperLength: 0,
+            copper: 0,
+            drainage: 0,
 
-            factor: 0,
+            coolingFactor: 0,
+            coolingLoad: 0,
 
-            calculatedLoad: 0,
-
-            acCapacity: 0,
-
-            acPrice: 0,
-
-            drainageLength: 0
-
+            capacity: 0
         }));
 
+    renderRoomPreview();
 
-    renderDimensionInputs();
-
-    goToPage("page2");
-
+    showPage(2);
 }
 
 
-/* ============================================================
+/* =========================================================
+   STEP 2
    ROOM PREVIEW
-============================================================ */
+   ========================================================= */
 
-function updateRoomPreview() {
+function renderRoomPreview() {
 
     const container =
-        document.getElementById("roomListPreview");
+        document.getElementById(
+            "roomPreview"
+        );
 
+    if (!container) return;
 
-    const inputs =
-        document.querySelectorAll(".room-name-input");
-
-
-    const names = [];
-
-
-    inputs.forEach(input => {
-
-        const value =
-            input.value.trim();
-
-
-        if (value) {
-
-            names.push(value);
-
-        }
-
-    });
-
-
-    if (names.length === 0) {
+    if (
+        quotation.rooms.length === 0
+    ) {
 
         container.innerHTML = `
-            <p class="empty-message">
-                No rooms added yet.
-            </p>
+            <div class="empty-message">
+                No rooms added.
+            </div>
         `;
 
         return;
-
     }
 
-
     container.innerHTML =
-        names
-            .map((name, index) => `
+        quotation.rooms
+            .map((room, index) => `
 
-                <div class="room-preview-card">
+                <div class="room-card">
 
                     <div>
-                        <span>
-                            ${index + 1}.
-                        </span>
-
                         <span class="room-name">
-                            ${escapeHTML(name)}
+                            ${index + 1}.
+                            ${escapeHTML(room.name)}
                         </span>
                     </div>
 
-                </div>
-
-            `)
-            .join("");
-
-}
-
-
-/* ============================================================
-   RENDER DIMENSION INPUTS
-============================================================ */
-
-function renderDimensionInputs() {
-
-    const container =
-        document.getElementById("dimensionInputs");
-
-
-    container.innerHTML = "";
-
-
-    state.rooms.forEach((room, index) => {
-
-        const card =
-            document.createElement("div");
-
-
-        card.className =
-            "dimension-card";
-
-
-        card.innerHTML = `
-
-            <div class="card-title">
-                ${index + 1}. ${escapeHTML(room.name)}
-            </div>
-
-            <div class="input-grid">
-
-                <div>
-
-                    <label>
-                        Length (m)
-                    </label>
-
-                    <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        class="length-input"
-                        data-index="${index}"
-                        value="${room.length || ""}"
-                        placeholder="Length"
-                    >
-
-                </div>
-
-
-                <div>
-
-                    <label>
-                        Width (m)
-                    </label>
-
-                    <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        class="width-input"
-                        data-index="${index}"
-                        value="${room.width || ""}"
-                        placeholder="Width"
-                    >
-
-                </div>
-
-            </div>
-
-            <div
-                class="area-display"
-                id="area-${index}"
-            >
-                Area: ${formatNumber(room.area || 0)} m²
-            </div>
-
-        `;
-
-
-        container.appendChild(card);
-
-    });
-
-
-    document
-        .querySelectorAll(".length-input, .width-input")
-        .forEach(input => {
-
-            input.addEventListener("input", updateLiveArea);
-
-        });
-
-}
-
-
-/* ============================================================
-   LIVE AREA
-============================================================ */
-
-function updateLiveArea(event) {
-
-    const index =
-        Number(event.target.dataset.index);
-
-
-    const card =
-        event.target.closest(".dimension-card");
-
-
-    const length =
-        Number(
-            card.querySelector(".length-input").value
-        ) || 0;
-
-
-    const width =
-        Number(
-            card.querySelector(".width-input").value
-        ) || 0;
-
-
-    const area =
-        length * width;
-
-
-    document
-        .getElementById(`area-${index}`)
-        .textContent =
-        `Area: ${formatNumber(area)} m²`;
-
-}
-
-
-/* ============================================================
-   PREVIEW DIMENSIONS
-============================================================ */
-
-function previewDimensions() {
-
-    let valid = true;
-
-
-    state.rooms.forEach((room, index) => {
-
-        const lengthInput =
-            document.querySelector(
-                `.length-input[data-index="${index}"]`
-            );
-
-
-        const widthInput =
-            document.querySelector(
-                `.width-input[data-index="${index}"]`
-            );
-
-
-        const length =
-            Number(lengthInput.value);
-
-
-        const width =
-            Number(widthInput.value);
-
-
-        if (
-            !length ||
-            !width ||
-            length <= 0 ||
-            width <= 0
-        ) {
-
-            valid = false;
-
-        }
-
-
-        room.length = length;
-
-        room.width = width;
-
-        room.area = length * width;
-
-    });
-
-
-    if (!valid) {
-
-        alert(
-            "Please enter valid length and width for every room."
-        );
-
-        return;
-
-    }
-
-
-    const tbody =
-        document.getElementById(
-            "dimensionPreviewTable"
-        );
-
-
-    tbody.innerHTML =
-        state.rooms
-            .map((room, index) => `
-
-                <tr>
-
-                    <td>${index + 1}</td>
-
-                    <td>${escapeHTML(room.name)}</td>
-
-                    <td>${formatNumber(room.length)}</td>
-
-                    <td>${formatNumber(room.width)}</td>
-
-                    <td>
-                        <strong>
-                            ${formatNumber(room.area)}
-                        </strong>
-                    </td>
-
-                </tr>
-
-            `)
-            .join("");
-
-
-    goToPage("page2Preview");
-
-}
-
-
-/* ============================================================
-   COPPER INPUTS
-============================================================ */
-
-function renderCopperInputs() {
-
-    const container =
-        document.getElementById("copperInputs");
-
-
-    container.innerHTML = "";
-
-
-    state.rooms.forEach((room, index) => {
-
-        const card =
-            document.createElement("div");
-
-
-        card.className =
-            "copper-card";
-
-
-        card.innerHTML = `
-
-            <div class="card-title">
-
-                ${index + 1}.
-                ${escapeHTML(room.name)}
-
-            </div>
-
-            <label>
-                Copper Length (m)
-            </label>
-
-            <input
-                type="number"
-                min="0"
-                step="0.01"
-                class="copper-length-input"
-                data-index="${index}"
-                value="${room.copperLength || ""}"
-                placeholder="e.g. 12"
-            >
-
-        `;
-
-
-        container.appendChild(card);
-
-    });
-
-}
-
-
-/* ============================================================
-   PREVIEW COPPER
-============================================================ */
-
-function previewCopper() {
-
-    let valid = true;
-
-
-    state.rooms.forEach((room, index) => {
-
-        const input =
-            document.querySelector(
-                `.copper-length-input[data-index="${index}"]`
-            );
-
-
-        const value =
-            Number(input.value);
-
-
-        if (
-            !value ||
-            value < 0
-        ) {
-
-            valid = false;
-
-        }
-
-
-        room.copperLength =
-            value;
-
-    });
-
-
-    if (!valid) {
-
-        alert(
-            "Please enter a valid copper length for every room."
-        );
-
-        return;
-
-    }
-
-
-    const tbody =
-        document.getElementById(
-            "copperPreviewTable"
-        );
-
-
-    tbody.innerHTML =
-        state.rooms
-            .map((room, index) => `
-
-                <tr>
-
-                    <td>${index + 1}</td>
-
-                    <td>${escapeHTML(room.name)}</td>
-
-                    <td>
-                        <strong>
-                            ${formatNumber(room.copperLength)} m
-                        </strong>
-                    </td>
-
-                </tr>
-
-            `)
-            .join("");
-
-
-    goToPage("page3Preview");
-
-}
-
-
-/* ============================================================
-   COOLING LOAD FACTOR
-============================================================ */
-
-function renderFactorInputs() {
-
-    const container =
-        document.getElementById("factorInputs");
-
-
-    container.innerHTML = "";
-
-
-    state.rooms.forEach((room, index) => {
-
-        const card =
-            document.createElement("div");
-
-
-        card.className =
-            "factor-card";
-
-
-        card.innerHTML = `
-
-            <div class="card-title">
-
-                ${index + 1}.
-                ${escapeHTML(room.name)}
-
-            </div>
-
-            <div class="small-text">
-
-                Room area:
-                <strong>
-                    ${formatNumber(room.area)} m²
-                </strong>
-
-            </div>
-
-
-            <label>
-                Base Cooling Load Factor
-            </label>
-
-            <input
-                type="number"
-                min="0"
-                step="0.01"
-                class="factor-input"
-                data-index="${index}"
-                value="${room.factor || ""}"
-                placeholder="e.g. 150"
-            >
-
-
-            <div
-                class="area-display"
-                id="load-${index}"
-            >
-                Calculated Load:
-                ${formatNumber(room.calculatedLoad || 0)}
-            </div>
-
-        `;
-
-
-        container.appendChild(card);
-
-    });
-
-
-    document
-        .querySelectorAll(".factor-input")
-        .forEach(input => {
-
-            input.addEventListener(
-                "input",
-                updateLiveLoad
-            );
-
-        });
-
-}
-
-
-/* ============================================================
-   LIVE COOLING LOAD
-============================================================ */
-
-function updateLiveLoad(event) {
-
-    const index =
-        Number(event.target.dataset.index);
-
-
-    const factor =
-        Number(event.target.value) || 0;
-
-
-    const room =
-        state.rooms[index];
-
-
-    const load =
-        room.area * factor;
-
-
-    document
-        .getElementById(`load-${index}`)
-        .textContent =
-        `Calculated Load: ${formatNumber(load)}`;
-
-}
-
-
-/* ============================================================
-   FIND AC CAPACITY
-============================================================ */
-
-function recommendCapacity(load) {
-
-    for (
-        const capacity
-        of AC_CAPACITIES
-    ) {
-
-        if (load <= capacity) {
-
-            return capacity;
-
-        }
-
-    }
-
-
-    return 48000;
-
-}
-
-
-/* ============================================================
-   PREVIEW FACTORS
-============================================================ */
-
-function previewFactors() {
-
-    let valid = true;
-
-
-    state.rooms.forEach((room, index) => {
-
-        const input =
-            document.querySelector(
-                `.factor-input[data-index="${index}"]`
-            );
-
-
-        const factor =
-            Number(input.value);
-
-
-        if (
-            !factor ||
-            factor <= 0
-        ) {
-
-            valid = false;
-
-        }
-
-
-        room.factor =
-            factor;
-
-
-        room.calculatedLoad =
-            room.area * factor;
-
-
-        room.acCapacity =
-            recommendCapacity(
-                room.calculatedLoad
-            );
-
-    });
-
-
-    if (!valid) {
-
-        alert(
-            "Please enter a valid cooling load factor for every room."
-        );
-
-        return;
-
-    }
-
-
-    const tbody =
-        document.getElementById(
-            "factorPreviewTable"
-        );
-
-
-    tbody.innerHTML =
-        state.rooms
-            .map((room, index) => `
-
-                <tr>
-
-                    <td>${index + 1}</td>
-
-                    <td>${escapeHTML(room.name)}</td>
-
-                    <td>
-                        ${formatNumber(room.area)}
-                    </td>
-
-                    <td>
-                        ${formatNumber(room.factor)}
-                    </td>
-
-                    <td>
-                        ${formatNumber(room.calculatedLoad)}
-                    </td>
-
-                    <td>
-                        <span class="capacity-badge">
-                            ${formatCapacity(room.acCapacity)}
-                        </span>
-                    </td>
-
-                </tr>
-
-            `)
-            .join("");
-
-
-    goToPage("page4Preview");
-
-}
-
-
-/* ============================================================
-   UNIQUE AC CAPACITIES
-============================================================ */
-
-function getUniqueCapacities() {
-
-    return [
-        ...new Set(
-            state.rooms.map(
-                room => room.acCapacity
-            )
-        )
-    ]
-    .sort((a, b) => a - b);
-
-}
-
-
-/* ============================================================
-   AC PRICE INPUTS
-============================================================ */
-
-function renderACPriceInputs() {
-
-    const container =
-        document.getElementById(
-            "acPriceInputs"
-        );
-
-
-    container.innerHTML = "";
-
-
-    const capacities =
-        getUniqueCapacities();
-
-
-    capacities.forEach(capacity => {
-
-        const quantity =
-            state.rooms.filter(
-                room =>
-                    room.acCapacity === capacity
-            ).length;
-
-
-        const roomWithPrice =
-            state.rooms.find(
-                room =>
-                    room.acCapacity === capacity
-            );
-
-
-        const card =
-            document.createElement("div");
-
-
-        card.className =
-            "form-card";
-
-
-        card.innerHTML = `
-
-            <div class="card-title">
-
-                <span class="capacity-badge">
-                    ${formatCapacity(capacity)}
-                </span>
-
-            </div>
-
-            <p class="small-text">
-                Quantity required:
-                <strong>${quantity}</strong>
-            </p>
-
-            <label>
-                Unit Price (KES)
-            </label>
-
-            <input
-                type="number"
-                min="0"
-                step="0.01"
-                class="ac-price-input"
-                data-capacity="${capacity}"
-                value="${roomWithPrice.acPrice || ""}"
-                placeholder="Enter equipment price"
-            >
-
-        `;
-
-
-        container.appendChild(card);
-
-    });
-
-}
-
-
-/* ============================================================
-   PREVIEW AC PRICES
-============================================================ */
-
-function previewACPrices() {
-
-    const capacities =
-        getUniqueCapacities();
-
-
-    let valid = true;
-
-
-    capacities.forEach(capacity => {
-
-        const input =
-            document.querySelector(
-                `.ac-price-input[data-capacity="${capacity}"]`
-            );
-
-
-        const price =
-            Number(input.value);
-
-
-        if (
-            !price ||
-            price < 0
-        ) {
-
-            valid = false;
-
-        }
-
-
-        state.rooms
-            .filter(
-                room =>
-                    room.acCapacity === capacity
-            )
-            .forEach(room => {
-
-                room.acPrice =
-                    price;
-
-            });
-
-    });
-
-
-    if (!valid) {
-
-        alert(
-            "Please enter a valid price for every AC capacity."
-        );
-
-        return;
-
-    }
-
-
-    const tbody =
-        document.getElementById(
-            "acPricePreviewTable"
-        );
-
-
-    tbody.innerHTML =
-        capacities
-            .map(capacity => {
-
-                const rooms =
-                    state.rooms.filter(
-                        room =>
-                            room.acCapacity === capacity
-                    );
-
-
-                const quantity =
-                    rooms.length;
-
-
-                const unitPrice =
-                    rooms[0].acPrice;
-
-
-                const total =
-                    quantity * unitPrice;
-
-
-                return `
-
-                    <tr>
-
-                        <td>
-                            <span class="capacity-badge">
-                                ${formatCapacity(capacity)}
-                            </span>
-                        </td>
-
-                        <td>${quantity}</td>
-
-                        <td>
-                            ${formatCurrency(unitPrice)}
-                        </td>
-
-                        <td>
-                            <strong>
-                                ${formatCurrency(total)}
-                            </strong>
-                        </td>
-
-                    </tr>
-
-                `;
-
-            })
-            .join("");
-
-
-    goToPage("page5Preview");
-
-}
-
-
-/* ============================================================
-   DRAINAGE
-============================================================ */
-
-function renderDrainageInputs() {
-
-    const container =
-        document.getElementById(
-            "drainageInputs"
-        );
-
-
-    container.innerHTML = "";
-
-
-    state.rooms.forEach((room, index) => {
-
-        const card =
-            document.createElement("div");
-
-
-        card.className =
-            "drainage-card";
-
-
-        card.innerHTML = `
-
-            <div class="card-title">
-
-                ${index + 1}.
-                ${escapeHTML(room.name)}
-
-            </div>
-
-            <label>
-                Drainage PVC Length (m)
-            </label>
-
-            <input
-                type="number"
-                min="0"
-                step="0.01"
-                class="drainage-length-input"
-                data-index="${index}"
-                value="${room.drainageLength || ""}"
-                placeholder="e.g. 8"
-            >
-
-        `;
-
-
-        container.appendChild(card);
-
-    });
-
-}
-
-
-/* ============================================================
-   PREVIEW DRAINAGE
-============================================================ */
-
-function previewDrainage() {
-
-    let valid = true;
-
-
-    state.rooms.forEach((room, index) => {
-
-        const input =
-            document.querySelector(
-                `.drainage-length-input[data-index="${index}"]`
-            );
-
-
-        const value =
-            Number(input.value);
-
-
-        if (
-            value < 0 ||
-            input.value === ""
-        ) {
-
-            valid = false;
-
-        }
-
-
-        room.drainageLength =
-            value;
-
-    });
-
-
-    if (!valid) {
-
-        alert(
-            "Please enter a valid drainage length for every room."
-        );
-
-        return;
-
-    }
-
-
-    const tbody =
-        document.getElementById(
-            "drainagePreviewTable"
-        );
-
-
-    tbody.innerHTML =
-        state.rooms
-            .map((room, index) => `
-
-                <tr>
-
-                    <td>${index + 1}</td>
-
-                    <td>${escapeHTML(room.name)}</td>
-
-                    <td>
-                        <strong>
-                            ${formatNumber(room.drainageLength)} m
-                        </strong>
-                    </td>
-
-                </tr>
-
-            `)
-            .join("");
-
-
-    goToPage("page6Preview");
-
-}
-
-
-/* ============================================================
-   OTHER ITEM TOTAL
-============================================================ */
-
-function updateOtherItemTotal() {
-
-    const quantity =
-        Number(
-            document.getElementById(
-                "otherItemQty"
-            ).value
-        ) || 0;
-
-
-    const price =
-        Number(
-            document.getElementById(
-                "otherItemPrice"
-            ).value
-        ) || 0;
-
-
-    const total =
-        quantity * price;
-
-
-    document
-        .getElementById(
-            "otherItemTotal"
-        )
-        .textContent =
-        formatCurrency(total);
-
-}
-
-
-/* ============================================================
-   ADD OTHER ITEM
-============================================================ */
-
-function addOtherItem() {
-
-    const name =
-        document
-            .getElementById(
-                "otherItemName"
-            )
-            .value
-            .trim();
-
-
-    const quantity =
-        Number(
-            document.getElementById(
-                "otherItemQty"
-            ).value
-        );
-
-
-    const unit =
-        document
-            .getElementById(
-                "otherItemUnit"
-            )
-            .value
-            .trim();
-
-
-    const price =
-        Number(
-            document.getElementById(
-                "otherItemPrice"
-            ).value
-        );
-
-
-    if (!name) {
-
-        alert(
-            "Please enter an item description."
-        );
-
-        return;
-
-    }
-
-
-    if (
-        !quantity ||
-        quantity <= 0
-    ) {
-
-        alert(
-            "Please enter a valid quantity."
-        );
-
-        return;
-
-    }
-
-
-    if (
-        !unit
-    ) {
-
-        alert(
-            "Please enter the unit."
-        );
-
-        return;
-
-    }
-
-
-    if (
-        price < 0 ||
-        isNaN(price)
-    ) {
-
-        alert(
-            "Please enter a valid unit price."
-        );
-
-        return;
-
-    }
-
-
-    const total =
-        quantity * price;
-
-
-    state.otherItems.push({
-
-        name,
-
-        quantity,
-
-        unit,
-
-        unitPrice: price,
-
-        total
-
-    });
-
-
-    renderOtherItems();
-
-
-    document
-        .getElementById(
-            "otherItemName"
-        )
-        .value = "";
-
-
-    document
-        .getElementById(
-            "otherItemQty"
-        )
-        .value = "";
-
-
-    document
-        .getElementById(
-            "otherItemPrice"
-        )
-        .value = "";
-
-
-    document
-        .getElementById(
-            "otherItemTotal"
-        )
-        .textContent =
-        "KES 0.00";
-
-}
-
-
-/* ============================================================
-   RENDER OTHER ITEMS
-============================================================ */
-
-function renderOtherItems() {
-
-    const container =
-        document.getElementById(
-            "otherItemsList"
-        );
-
-
-    if (
-        state.otherItems.length === 0
-    ) {
-
-        container.innerHTML = `
-            <p class="empty-message">
-                No additional items added.
-            </p>
-        `;
-
-        return;
-
-    }
-
-
-    container.innerHTML =
-        state.otherItems
-            .map((item, index) => `
-
-                <div
-                    class="room-preview-card"
-                >
-
-                    <div>
-
-                        <strong>
-                            ${index + 4}.
-                        </strong>
-
-                        ${escapeHTML(item.name)}
-
-                        <br>
-
-                        <span class="small-text">
-
-                            ${item.quantity}
-                            ${escapeHTML(item.unit)}
-                            ×
-                            ${formatCurrency(item.unitPrice)}
-
-                        </span>
-
-                    </div>
-
-
-                    <div class="room-actions">
-
-                        <strong>
-                            ${formatCurrency(item.total)}
-                        </strong>
+                    <div class="button-group">
 
                         <button
-                            class="danger-btn"
-                            onclick="removeOtherItem(${index})"
+                            type="button"
+                            class="edit-button"
+                            onclick="renameRoom(${index})"
+                        >
+                            Rename
+                        </button>
+
+                        <button
+                            type="button"
+                            class="danger-button"
+                            onclick="deleteRoom(${index})"
                         >
                             Delete
                         </button>
@@ -1712,193 +323,991 @@ function renderOtherItems() {
 
             `)
             .join("");
-
 }
 
 
-/* ============================================================
-   REMOVE OTHER ITEM
-============================================================ */
-
-function removeOtherItem(index) {
+function renameRoom(index) {
 
     if (
-        confirm(
-            "Remove this item?"
-        )
+        !quotation.rooms[index]
     ) {
-
-        state.otherItems.splice(
-            index,
-            1
-        );
-
-        renderOtherItems();
-
+        return;
     }
 
+    const currentName =
+        quotation.rooms[index].name;
+
+    const newName =
+        prompt(
+            "Enter the new room name:",
+            currentName
+        );
+
+    if (
+        newName &&
+        newName.trim()
+    ) {
+
+        quotation.rooms[index].name =
+            newName.trim();
+
+        renderRoomPreview();
+    }
 }
 
 
-/* ============================================================
-   CALCULATIONS
-============================================================ */
+function deleteRoom(index) {
 
-function getEquipmentTotal() {
+    if (
+        !quotation.rooms[index]
+    ) {
+        return;
+    }
 
-    return state.rooms.reduce(
-        (total, room) => {
+    const roomName =
+        quotation.rooms[index].name;
 
-            return total +
-                room.acPrice;
+    const confirmed =
+        confirm(
+            `Delete "${roomName}"?`
+        );
 
-        },
-        0
+    if (!confirmed) {
+        return;
+    }
+
+    quotation.rooms.splice(
+        index,
+        1
     );
 
+    if (
+        quotation.rooms.length === 0
+    ) {
+
+        alert(
+            "At least one room is required."
+        );
+
+        showPage(1);
+
+        return;
+    }
+
+    renderRoomPreview();
 }
 
 
-function getCopperTotalLength() {
+function goToDimensions() {
 
-    return state.rooms.reduce(
-        (total, room) => {
+    if (
+        quotation.rooms.length === 0
+    ) {
 
-            return total +
-                Number(room.copperLength);
+        alert(
+            "Please add at least one room."
+        );
 
-        },
-        0
+        showPage(1);
+
+        return;
+    }
+
+    renderDimensionInputs();
+
+    showPage(3);
+}
+
+
+/* =========================================================
+   STEP 3
+   ROOM DIMENSIONS
+   ========================================================= */
+
+function renderDimensionInputs() {
+
+    const container =
+        document.getElementById(
+            "dimensionInputs"
+        );
+
+    if (!container) return;
+
+    container.innerHTML =
+        quotation.rooms
+            .map((room, index) => `
+
+                <div class="card">
+
+                    <h3>
+                        ${index + 1}.
+                        ${escapeHTML(room.name)}
+                    </h3>
+
+                    <label>
+                        Length (m)
+
+                        <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            id="length-${index}"
+                            value="${room.length || ""}"
+                            placeholder="e.g. 5"
+                        >
+                    </label>
+
+                    <label>
+                        Width (m)
+
+                        <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            id="width-${index}"
+                            value="${room.width || ""}"
+                            placeholder="e.g. 4"
+                        >
+                    </label>
+
+                    <div class="info-box">
+                        Area:
+                        <strong id="area-${index}">
+                            ${number(room.area)} m²
+                        </strong>
+                    </div>
+
+                </div>
+
+            `)
+            .join("");
+
+    quotation.rooms.forEach(
+        (room, index) => {
+
+            const length =
+                document.getElementById(
+                    `length-${index}`
+                );
+
+            const width =
+                document.getElementById(
+                    `width-${index}`
+                );
+
+            if (length) {
+
+                length.addEventListener(
+                    "input",
+                    () =>
+                        updateAreaPreview(index)
+                );
+            }
+
+            if (width) {
+
+                width.addEventListener(
+                    "input",
+                    () =>
+                        updateAreaPreview(index)
+                );
+            }
+
+        }
+    );
+}
+
+
+function updateAreaPreview(index) {
+
+    const length =
+        Number(
+            document.getElementById(
+                `length-${index}`
+            )?.value
+        );
+
+    const width =
+        Number(
+            document.getElementById(
+                `width-${index}`
+            )?.value
+        );
+
+    const area =
+        length * width;
+
+    const output =
+        document.getElementById(
+            `area-${index}`
+        );
+
+    if (output) {
+
+        output.textContent =
+            `${number(area)} m²`;
+    }
+}
+
+
+function previewDimensions() {
+
+    let valid = true;
+
+    quotation.rooms.forEach(
+        (room, index) => {
+
+            const length =
+                Number(
+                    document.getElementById(
+                        `length-${index}`
+                    )?.value
+                );
+
+            const width =
+                Number(
+                    document.getElementById(
+                        `width-${index}`
+                    )?.value
+                );
+
+            if (
+                !length ||
+                !width ||
+                length <= 0 ||
+                width <= 0
+            ) {
+
+                valid = false;
+
+                return;
+            }
+
+            room.length = length;
+            room.width = width;
+            room.area =
+                length * width;
+        }
     );
 
+    if (!valid) {
+
+        alert(
+            "Please enter valid length and width for every room."
+        );
+
+        return;
+    }
+
+    renderDimensionPreview();
+
+    showPage(4);
 }
 
 
-function getDrainageTotalLength() {
+function renderDimensionPreview() {
 
-    return state.rooms.reduce(
-        (total, room) => {
+    const container =
+        document.getElementById(
+            "dimensionPreview"
+        );
 
-            return total +
-                Number(room.drainageLength);
+    if (!container) return;
 
-        },
-        0
+    container.innerHTML = `
+
+        <div style="overflow-x:auto">
+
+            <table
+                style="
+                    width:100%;
+                    border-collapse:collapse;
+                "
+            >
+
+                <thead>
+
+                    <tr
+                        style="
+                            background:#e0f2fe;
+                        "
+                    >
+
+                        <th style="padding:10px;text-align:left;">
+                            Room
+                        </th>
+
+                        <th style="padding:10px;text-align:right;">
+                            Length
+                        </th>
+
+                        <th style="padding:10px;text-align:right;">
+                            Width
+                        </th>
+
+                        <th style="padding:10px;text-align:right;">
+                            Area
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    ${quotation.rooms
+                        .map(room => `
+
+                            <tr>
+
+                                <td style="padding:10px;">
+                                    ${escapeHTML(room.name)}
+                                </td>
+
+                                <td style="padding:10px;text-align:right;">
+                                    ${number(room.length)} m
+                                </td>
+
+                                <td style="padding:10px;text-align:right;">
+                                    ${number(room.width)} m
+                                </td>
+
+                                <td style="padding:10px;text-align:right;font-weight:bold;">
+                                    ${number(room.area)} m²
+                                </td>
+
+                            </tr>
+
+                        `)
+                        .join("")}
+
+                </tbody>
+
+            </table>
+
+        </div>
+    `;
+}
+
+
+/* =========================================================
+   STEP 5
+   COPPER
+   ========================================================= */
+
+function goToCopper() {
+
+    renderCopperInputs();
+
+    showPage(5);
+}
+
+
+function renderCopperInputs() {
+
+    const container =
+        document.getElementById(
+            "copperInputs"
+        );
+
+    if (!container) return;
+
+    container.innerHTML =
+        quotation.rooms
+            .map((room, index) => `
+
+                <div class="card">
+
+                    <h3>
+                        ${index + 1}.
+                        ${escapeHTML(room.name)}
+                    </h3>
+
+                    <label>
+                        Copper Length (m)
+
+                        <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            id="copper-${index}"
+                            value="${room.copper || ""}"
+                            placeholder="e.g. 8"
+                        >
+                    </label>
+
+                </div>
+
+            `)
+            .join("");
+}
+
+
+function previewCopper() {
+
+    let valid = true;
+
+    quotation.rooms.forEach(
+        (room, index) => {
+
+            const input =
+                document.getElementById(
+                    `copper-${index}`
+                );
+
+            const copper =
+                Number(input?.value);
+
+            if (
+                isNaN(copper) ||
+                copper < 0
+            ) {
+
+                valid = false;
+
+                return;
+            }
+
+            room.copper = copper;
+        }
     );
 
+    if (!valid) {
+
+        alert(
+            "Please enter valid copper lengths."
+        );
+
+        return;
+    }
+
+    renderCopperPreview();
+
+    showPage(6);
 }
 
 
-function getCopperCost() {
+function renderCopperPreview() {
 
-    return (
-        getCopperTotalLength() *
-        state.copperRate
+    const container =
+        document.getElementById(
+            "copperPreview"
+        );
+
+    if (!container) return;
+
+    const totalCopper =
+        quotation.rooms.reduce(
+            (sum, room) =>
+                sum +
+                Number(
+                    room.copper || 0
+                ),
+            0
+        );
+
+    container.innerHTML = `
+
+        ${quotation.rooms
+            .map((room, index) => `
+
+                <div class="card">
+
+                    <strong>
+                        ${index + 1}.
+                        ${escapeHTML(room.name)}
+                    </strong>
+
+                    <p>
+                        Copper:
+                        <strong>
+                            ${number(room.copper)} m
+                        </strong>
+                    </p>
+
+                </div>
+
+            `)
+            .join("")}
+
+        <div class="info-box">
+
+            <strong>
+                Total Copper:
+            </strong>
+
+            ${number(totalCopper)} m
+
+        </div>
+    `;
+}
+
+
+/* =========================================================
+   STEP 7
+   COOLING LOAD
+   ========================================================= */
+
+function goToCoolingLoad() {
+
+    renderCoolingLoadInputs();
+
+    showPage(7);
+}
+
+
+function renderCoolingLoadInputs() {
+
+    const container =
+        document.getElementById(
+            "coolingLoadInputs"
+        );
+
+    if (!container) return;
+
+    container.innerHTML =
+        quotation.rooms
+            .map((room, index) => `
+
+                <div class="card">
+
+                    <h3>
+                        ${index + 1}.
+                        ${escapeHTML(room.name)}
+                    </h3>
+
+                    <p>
+                        Room Area:
+                        <strong>
+                            ${number(room.area)} m²
+                        </strong>
+                    </p>
+
+                    <label>
+                        Base Cooling Load Factor
+
+                        <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            id="factor-${index}"
+                            value="${room.coolingFactor || ""}"
+                            placeholder="e.g. 700"
+                        >
+                    </label>
+
+                    <div class="info-box">
+
+                        Calculated Cooling Load:
+
+                        <strong id="load-${index}">
+                            0 BTU/hr
+                        </strong>
+
+                    </div>
+
+                </div>
+
+            `)
+            .join("");
+
+    quotation.rooms.forEach(
+        (room, index) => {
+
+            const input =
+                document.getElementById(
+                    `factor-${index}`
+                );
+
+            if (input) {
+
+                input.addEventListener(
+                    "input",
+                    () =>
+                        updateCoolingLoadPreview(
+                            index
+                        )
+                );
+            }
+        }
+    );
+}
+
+
+function updateCoolingLoadPreview(index) {
+
+    const factor =
+        Number(
+            document.getElementById(
+                `factor-${index}`
+            )?.value
+        );
+
+    const room =
+        quotation.rooms[index];
+
+    if (!room) return;
+
+    const load =
+        room.area * factor;
+
+    const output =
+        document.getElementById(
+            `load-${index}`
+        );
+
+    if (output) {
+
+        output.textContent =
+            `${number(load)} BTU/hr`;
+    }
+}
+
+
+function selectCapacity(load) {
+
+    for (
+        const capacity
+        of AC_CAPACITIES
+    ) {
+
+        if (load <= capacity) {
+            return capacity;
+        }
+    }
+
+    return 48000;
+}
+
+
+function previewCoolingLoad() {
+
+    let valid = true;
+
+    quotation.rooms.forEach(
+        (room, index) => {
+
+            const factor =
+                Number(
+                    document.getElementById(
+                        `factor-${index}`
+                    )?.value
+                );
+
+            if (
+                isNaN(factor) ||
+                factor <= 0
+            ) {
+
+                valid = false;
+
+                return;
+            }
+
+            room.coolingFactor =
+                factor;
+
+            room.coolingLoad =
+                room.area * factor;
+
+            room.capacity =
+                selectCapacity(
+                    room.coolingLoad
+                );
+        }
     );
 
+    if (!valid) {
+
+        alert(
+            "Please enter a valid cooling load factor for every room."
+        );
+
+        return;
+    }
+
+    renderACPreview();
+
+    showPage(8);
 }
 
 
-function getDrainageCost() {
+/* =========================================================
+   STEP 8
+   AC PREVIEW
+   ========================================================= */
 
-    return (
-        getDrainageTotalLength() *
-        state.drainageRate
+function renderACPreview() {
+
+    const container =
+        document.getElementById(
+            "acPreview"
+        );
+
+    if (!container) return;
+
+    container.innerHTML =
+        quotation.rooms
+            .map((room, index) => `
+
+                <div class="card">
+
+                    <h3>
+                        ${index + 1}.
+                        ${escapeHTML(room.name)}
+                    </h3>
+
+                    <p>
+                        Area:
+                        ${number(room.area)} m²
+                    </p>
+
+                    <p>
+                        Cooling Load:
+                        <strong>
+                            ${number(room.coolingLoad)}
+                            BTU/hr
+                        </strong>
+                    </p>
+
+                    <div class="info-box">
+
+                        Recommended AC:
+
+                        <strong>
+                            ${room.capacity.toLocaleString()}
+                            BTU/hr
+                        </strong>
+
+                    </div>
+
+                </div>
+
+            `)
+            .join("");
+}
+
+
+function goToPrices() {
+
+    renderACPriceInputs();
+
+    showPage(9);
+}
+
+
+/* =========================================================
+   STEP 9
+   AC PRICES
+   ========================================================= */
+
+function getUniqueCapacities() {
+
+    return [
+        ...new Set(
+            quotation.rooms.map(
+                room => room.capacity
+            )
+        )
+    ].sort(
+        (a, b) => a - b
     );
-
 }
 
 
-function getOtherItemsTotal() {
+function getCapacityQuantity(
+    capacity
+) {
 
-    return state.otherItems.reduce(
-        (total, item) => {
-
-            return total +
-                item.total;
-
-        },
-        0
-    );
-
+    return quotation.rooms.filter(
+        room =>
+            room.capacity === capacity
+    ).length;
 }
 
 
-function getTotalHVACWorks() {
+function renderACPriceInputs() {
 
-    return (
-        getEquipmentTotal() +
+    const container =
+        document.getElementById(
+            "acPriceInputs"
+        );
 
-        getCopperCost() +
+    if (!container) return;
 
-        getDrainageCost() +
+    const capacities =
+        getUniqueCapacities();
 
-        getOtherItemsTotal()
-    );
+    container.innerHTML =
+        capacities
+            .map(capacity => {
 
+                const existing =
+                    quotation.acPrices.find(
+                        item =>
+                            item.capacity ===
+                            capacity
+                    );
+
+                return `
+
+                    <div class="card">
+
+                        <h3>
+                            ${capacity.toLocaleString()}
+                            BTU/hr
+                        </h3>
+
+                        <p>
+                            Quantity:
+                            <strong>
+                                ${getCapacityQuantity(
+                                    capacity
+                                )}
+                            </strong>
+                        </p>
+
+                        <label>
+                            Unit Price (KES)
+
+                            <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                class="ac-price-input"
+                                data-capacity="${capacity}"
+                                value="${
+                                    existing
+                                        ? existing.unitPrice
+                                        : ""
+                                }"
+                                placeholder="Enter unit price"
+                            >
+                        </label>
+
+                    </div>
+
+                `;
+            })
+            .join("");
 }
 
 
-function getExclusiveSummaryTotal() {
+function saveACPrices() {
 
-    const hvac =
-        getTotalHVACWorks();
+    const inputs =
+        document.querySelectorAll(
+            ".ac-price-input"
+        );
 
+    let valid = true;
 
-    return (
-        15000 +
-        5000 +
-        hvac
-    );
+    const prices = [];
 
+    inputs.forEach(input => {
+
+        const capacity =
+            Number(
+                input.dataset.capacity
+            );
+
+        const unitPrice =
+            Number(input.value);
+
+        if (
+            isNaN(unitPrice) ||
+            unitPrice <= 0
+        ) {
+
+            valid = false;
+
+            return;
+        }
+
+        const quantity =
+            getCapacityQuantity(
+                capacity
+            );
+
+        prices.push({
+
+            capacity,
+            quantity,
+            unitPrice,
+
+            total:
+                quantity * unitPrice
+        });
+    });
+
+    if (!valid) {
+
+        alert(
+            "Please enter a valid price for every AC capacity."
+        );
+
+        return;
+    }
+
+    quotation.acPrices =
+        prices;
+
+    goToMaterialRates();
 }
 
 
-function getVAT() {
+/* =========================================================
+   STEP 10
+   MATERIAL RATES
+   ========================================================= */
 
-    return (
-        getExclusiveSummaryTotal() *
-        0.16
-    );
+function goToMaterialRates() {
 
+    const copperInput =
+        document.getElementById(
+            "copperRate"
+        );
+
+    const drainageInput =
+        document.getElementById(
+            "drainageRate"
+        );
+
+    if (copperInput) {
+
+        copperInput.value =
+            quotation.copperRate || "";
+    }
+
+    if (drainageInput) {
+
+        drainageInput.value =
+            quotation.drainageRate || "";
+    }
+
+    showPage(10);
 }
 
 
-function getInclusiveTotal() {
+function saveMaterialRates() {
 
-    return (
-        getExclusiveSummaryTotal() +
-        getVAT()
-    );
-
-}
-
-
-/* ============================================================
-   GENERATE QUOTATION PREVIEW
-============================================================ */
-
-function generateQuotationPreview() {
-
-    state.copperRate =
+    const copperRate =
         Number(
             document.getElementById(
                 "copperRate"
-            ).value
+            )?.value
         );
 
-
-    state.drainageRate =
+    const drainageRate =
         Number(
             document.getElementById(
                 "drainageRate"
-            ).value
+            )?.value
         );
 
-
     if (
-        isNaN(state.copperRate) ||
-        state.copperRate < 0
+        isNaN(copperRate) ||
+        copperRate < 0
     ) {
 
         alert(
@@ -1906,13 +1315,11 @@ function generateQuotationPreview() {
         );
 
         return;
-
     }
 
-
     if (
-        isNaN(state.drainageRate) ||
-        state.drainageRate < 0
+        isNaN(drainageRate) ||
+        drainageRate < 0
     ) {
 
         alert(
@@ -1920,629 +1327,1103 @@ function generateQuotationPreview() {
         );
 
         return;
-
     }
 
+    quotation.copperRate =
+        copperRate;
 
-    const equipment =
-        getEquipmentTotal();
+    quotation.drainageRate =
+        drainageRate;
 
+    renderAdditionalItems();
 
-    const copper =
-        getCopperCost();
-
-
-    const drainage =
-        getDrainageCost();
-
-
-    const hvac =
-        getTotalHVACWorks();
+    showPage(11);
+}
 
 
-    const exclusive =
-        getExclusiveSummaryTotal();
+/* =========================================================
+   STEP 11
+   ADDITIONAL ITEMS
+   ========================================================= */
 
+function renderAdditionalItems() {
 
-    const vat =
-        getVAT();
-
-
-    const inclusive =
-        getInclusiveTotal();
-
-
-    document
-        .getElementById(
-            "summaryEquipment"
-        )
-        .textContent =
-        formatCurrency(equipment);
-
-
-    document
-        .getElementById(
-            "summaryCopper"
-        )
-        .textContent =
-        formatCurrency(copper);
-
-
-    document
-        .getElementById(
-            "summaryDrainage"
-        )
-        .textContent =
-        formatCurrency(drainage);
-
-
-    document
-        .getElementById(
-            "summaryHVAC"
-        )
-        .textContent =
-        formatCurrency(hvac);
-
-
-    document
-        .getElementById(
-            "summaryHVAC2"
-        )
-        .textContent =
-        formatCurrency(hvac);
-
-
-    document
-        .getElementById(
-            "summaryExclusive"
-        )
-        .textContent =
-        formatCurrency(exclusive);
-
-
-    document
-        .getElementById(
-            "summaryVAT"
-        )
-        .textContent =
-        formatCurrency(vat);
-
-
-    document
-        .getElementById(
-            "summaryInclusive"
-        )
-        .textContent =
-        formatCurrency(inclusive);
-
-
-    const otherContainer =
+    const container =
         document.getElementById(
-            "summaryOtherItems"
+            "additionalItems"
         );
 
+    if (!container) return;
 
-    otherContainer.innerHTML =
-        state.otherItems
-            .map(item => `
+    container.innerHTML = `
 
-                <div class="summary-row">
+        <div class="card">
 
-                    <span>
-                        ${escapeHTML(item.name)}
-                    </span>
+            <label>
+                Item Name
+
+                <input
+                    id="extraItemName"
+                    type="text"
+                    placeholder="e.g. Wall bracket"
+                >
+            </label>
+
+            <label>
+                Quantity
+
+                <input
+                    id="extraItemQty"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="e.g. 2"
+                >
+            </label>
+
+            <label>
+                Unit
+
+                <input
+                    id="extraItemUnit"
+                    type="text"
+                    placeholder="e.g. pcs"
+                >
+            </label>
+
+            <label>
+                Unit Price (KES)
+
+                <input
+                    id="extraItemPrice"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="e.g. 1500"
+                >
+            </label>
+
+            <div class="info-box">
+
+                Item Total:
+
+                <strong id="extraItemTotal">
+                    KES 0.00
+                </strong>
+
+            </div>
+
+            <button
+                type="button"
+                class="secondary-button full-width"
+                onclick="saveExtraItem()"
+            >
+                Add Item
+            </button>
+
+        </div>
+
+        <div id="additionalItemsPreview"></div>
+
+        <button
+            type="button"
+            class="primary-button full-width"
+            onclick="finishAdditionalItems()"
+        >
+            Continue to Quotation Preview →
+        </button>
+    `;
+
+    const qty =
+        document.getElementById(
+            "extraItemQty"
+        );
+
+    const price =
+        document.getElementById(
+            "extraItemPrice"
+        );
+
+    if (qty) {
+
+        qty.addEventListener(
+            "input",
+            calculateExtraItem
+        );
+    }
+
+    if (price) {
+
+        price.addEventListener(
+            "input",
+            calculateExtraItem
+        );
+    }
+
+    renderAdditionalItemsPreview();
+}
+
+
+function calculateExtraItem() {
+
+    const qty =
+        Number(
+            document.getElementById(
+                "extraItemQty"
+            )?.value
+        );
+
+    const price =
+        Number(
+            document.getElementById(
+                "extraItemPrice"
+            )?.value
+        );
+
+    const total =
+        qty * price;
+
+    const output =
+        document.getElementById(
+            "extraItemTotal"
+        );
+
+    if (output) {
+
+        output.textContent =
+            money(total);
+    }
+}
+
+
+function saveExtraItem() {
+
+    const name =
+        document.getElementById(
+            "extraItemName"
+        )?.value.trim();
+
+    const quantity =
+        Number(
+            document.getElementById(
+                "extraItemQty"
+            )?.value
+        );
+
+    const unit =
+        document.getElementById(
+            "extraItemUnit"
+        )?.value.trim() ||
+        "lot";
+
+    const unitPrice =
+        Number(
+            document.getElementById(
+                "extraItemPrice"
+            )?.value
+        );
+
+    if (
+        !name ||
+        isNaN(quantity) ||
+        quantity <= 0 ||
+        isNaN(unitPrice) ||
+        unitPrice < 0
+    ) {
+
+        alert(
+            "Please enter item name, quantity and valid unit price."
+        );
+
+        return;
+    }
+
+    quotation.additionalItems.push({
+
+        name,
+        quantity,
+        unit,
+        unitPrice,
+
+        total:
+            quantity * unitPrice
+    });
+
+    document.getElementById(
+        "extraItemName"
+    ).value = "";
+
+    document.getElementById(
+        "extraItemQty"
+    ).value = "";
+
+    document.getElementById(
+        "extraItemUnit"
+    ).value = "";
+
+    document.getElementById(
+        "extraItemPrice"
+    ).value = "";
+
+    document.getElementById(
+        "extraItemTotal"
+    ).textContent =
+        "KES 0.00";
+
+    renderAdditionalItemsPreview();
+}
+
+
+function renderAdditionalItemsPreview() {
+
+    const container =
+        document.getElementById(
+            "additionalItemsPreview"
+        );
+
+    if (!container) return;
+
+    if (
+        quotation.additionalItems.length === 0
+    ) {
+
+        container.innerHTML = `
+            <div class="empty-message">
+                No additional items added.
+            </div>
+        `;
+
+        return;
+    }
+
+    container.innerHTML =
+        quotation.additionalItems
+            .map((item, index) => `
+
+                <div class="card">
 
                     <strong>
-                        ${formatCurrency(item.total)}
+                        ${index + 1}.
+                        ${escapeHTML(item.name)}
                     </strong>
+
+                    <p>
+                        ${number(item.quantity)}
+                        ${escapeHTML(item.unit)}
+                        ×
+                        ${money(item.unitPrice)}
+                    </p>
+
+                    <p>
+                        Total:
+                        <strong>
+                            ${money(item.total)}
+                        </strong>
+                    </p>
+
+                    <button
+                        type="button"
+                        class="danger-button"
+                        onclick="deleteAdditionalItem(${index})"
+                    >
+                        Delete
+                    </button>
 
                 </div>
 
             `)
             .join("");
-
-
-    goToPage("page8");
-
 }
 
 
-/* ============================================================
-   PDF GENERATION
-============================================================ */
+function deleteAdditionalItem(index) {
 
-function generatePDF() {
+    if (
+        !quotation.additionalItems[index]
+    ) {
+        return;
+    }
 
-    const {
-        jsPDF
-    } = window.jspdf;
+    if (
+        confirm(
+            "Delete this additional item?"
+        )
+    ) {
 
+        quotation.additionalItems.splice(
+            index,
+            1
+        );
+
+        renderAdditionalItemsPreview();
+    }
+}
+
+
+function finishAdditionalItems() {
+
+    renderQuotationPreview();
+
+    showPage(12);
+}
+
+
+/* =========================================================
+   STEP 12
+   QUOTATION PREVIEW
+   ========================================================= */
+
+function getEquipmentTotal() {
+
+    return quotation.acPrices.reduce(
+        (sum, item) =>
+            sum +
+            Number(item.total || 0),
+        0
+    );
+}
+
+
+function getCopperTotal() {
+
+    const totalLength =
+        quotation.rooms.reduce(
+            (sum, room) =>
+                sum +
+                Number(
+                    room.copper || 0
+                ),
+            0
+        );
+
+    return (
+        totalLength *
+        quotation.copperRate
+    );
+}
+
+
+function getDrainageTotal() {
+
+    const totalLength =
+        quotation.rooms.reduce(
+            (sum, room) =>
+                sum +
+                Number(
+                    room.drainage || 0
+                ),
+            0
+        );
+
+    return (
+        totalLength *
+        quotation.drainageRate
+    );
+}
+
+
+function getAdditionalItemsTotal() {
+
+    return quotation.additionalItems.reduce(
+        (sum, item) =>
+            sum +
+            Number(item.total || 0),
+        0
+    );
+}
+
+
+function getHVACTotal() {
+
+    return (
+        getEquipmentTotal() +
+        getCopperTotal() +
+        getDrainageTotal() +
+        getAdditionalItemsTotal()
+    );
+}
+
+
+function renderQuotationPreview() {
+
+    const container =
+        document.getElementById(
+            "quotationPreview"
+        );
+
+    if (!container) return;
+
+    const equipment =
+        getEquipmentTotal();
+
+    const copper =
+        getCopperTotal();
+
+    const drainage =
+        getDrainageTotal();
+
+    const additional =
+        getAdditionalItemsTotal();
+
+    const total =
+        getHVACTotal();
+
+    container.innerHTML = `
+
+        <div class="card">
+
+            <h3>Equipment</h3>
+
+            ${quotation.acPrices
+                .map(item => `
+
+                    <div class="preview-item">
+
+                        <strong>
+                            ${item.capacity.toLocaleString()}
+                            BTU/hr
+                        </strong>
+
+                        <p>
+                            Qty:
+                            ${item.quantity}
+                        </p>
+
+                        <p>
+                            Unit:
+                            ${money(item.unitPrice)}
+                        </p>
+
+                        <p>
+                            Total:
+                            <strong>
+                                ${money(item.total)}
+                            </strong>
+                        </p>
+
+                    </div>
+
+                `)
+                .join("")}
+
+            <div class="info-box">
+                Equipment Total:
+                <strong>
+                    ${money(equipment)}
+                </strong>
+            </div>
+
+        </div>
+
+
+        <div class="card">
+
+            <h3>Copper</h3>
+
+            <p>
+                Total Length:
+                ${number(
+                    quotation.rooms.reduce(
+                        (sum, room) =>
+                            sum +
+                            Number(
+                                room.copper || 0
+                            ),
+                        0
+                    )
+                )} m
+            </p>
+
+            <strong>
+                ${money(copper)}
+            </strong>
+
+        </div>
+
+
+        <div class="card">
+
+            <h3>Drainage</h3>
+
+            <p>
+                Total:
+                <strong>
+                    ${money(drainage)}
+                </strong>
+            </p>
+
+        </div>
+
+
+        ${
+            quotation.additionalItems.length
+                ? `
+
+                    <div class="card">
+
+                        <h3>
+                            Additional Works
+                        </h3>
+
+                        ${quotation.additionalItems
+                            .map(item => `
+
+                                <div class="preview-item">
+
+                                    <strong>
+                                        ${escapeHTML(
+                                            item.name
+                                        )}
+                                    </strong>
+
+                                    <p>
+                                        ${number(
+                                            item.quantity
+                                        )}
+                                        ${escapeHTML(
+                                            item.unit
+                                        )}
+                                    </p>
+
+                                    <strong>
+                                        ${money(
+                                            item.total
+                                        )}
+                                    </strong>
+
+                                </div>
+
+                            `)
+                            .join("")}
+
+                    </div>
+                `
+                : ""
+        }
+
+
+        <div class="info-box">
+
+            <strong>
+                TOTAL HVAC WORKS
+            </strong>
+
+            <br>
+
+            ${money(total)}
+
+        </div>
+    `;
+}
+
+
+function goToClientDetails() {
+
+    renderQuotationPreview();
+
+    showPage(13);
+}
+
+
+/* =========================================================
+   STEP 13
+   CLIENT DETAILS
+   ========================================================= */
+
+function getClientDetails() {
+
+    quotation.clientName =
+        document.getElementById(
+            "clientName"
+        )?.value.trim() || "";
+
+    quotation.installationLocation =
+        document.getElementById(
+            "installationLocation"
+        )?.value.trim() || "";
+
+    quotation.salesPerson =
+        document.getElementById(
+            "salesPerson"
+        )?.value.trim() || "";
+
+    quotation.salesPhone =
+        document.getElementById(
+            "salesPhone"
+        )?.value.trim() || "";
+
+    quotation.salesEmail =
+        document.getElementById(
+            "salesEmail"
+        )?.value.trim() || "";
+}
+
+
+/* =========================================================
+   IMAGE → DATA URL
+   ========================================================= */
+
+function imageToDataURL(url) {
+
+    return new Promise(
+        (resolve, reject) => {
+
+            const img =
+                new Image();
+
+            img.onload = function() {
+
+                try {
+
+                    const canvas =
+                        document.createElement(
+                            "canvas"
+                        );
+
+                    canvas.width =
+                        img.naturalWidth;
+
+                    canvas.height =
+                        img.naturalHeight;
+
+                    const ctx =
+                        canvas.getContext(
+                            "2d"
+                        );
+
+                    ctx.drawImage(
+                        img,
+                        0,
+                        0
+                    );
+
+                    resolve(
+                        canvas.toDataURL(
+                            "image/jpeg",
+                            0.95
+                        )
+                    );
+
+                } catch (error) {
+
+                    reject(error);
+                }
+            };
+
+            img.onerror =
+                function() {
+
+                    reject(
+                        new Error(
+                            "Unable to load " +
+                            url
+                        )
+                    );
+                };
+
+            img.src = url;
+        }
+    );
+}
+
+
+/* =========================================================
+   PDF HEADER
+   ========================================================= */
+
+function addHeaderImage(
+    doc,
+    headerData
+) {
+
+    if (!headerData) {
+        return;
+    }
+
+    const pageWidth =
+        doc.internal.pageSize.getWidth();
+
+    try {
+
+        doc.addImage(
+            headerData,
+            "JPEG",
+            0,
+            0,
+            pageWidth,
+            42
+        );
+
+    } catch (error) {
+
+        console.warn(
+            "Header image could not be added.",
+            error
+        );
+    }
+}
+
+
+/* =========================================================
+   PDF FOOTER
+   ========================================================= */
+
+function addFooterToPage(
+    doc,
+    footerData,
+    pageNumber
+) {
+
+    const pageWidth =
+        doc.internal.pageSize.getWidth();
+
+    const pageHeight =
+        doc.internal.pageSize.getHeight();
+
+    try {
+
+        if (footerData) {
+
+            doc.addImage(
+                footerData,
+                "JPEG",
+                0,
+                pageHeight - 35,
+                pageWidth,
+                35
+            );
+        }
+
+    } catch (error) {
+
+        console.warn(
+            "Footer image could not be added.",
+            error
+        );
+    }
+
+    doc.setFontSize(7);
+
+    doc.setTextColor(
+        100,
+        100,
+        100
+    );
+
+    doc.text(
+        `Page ${pageNumber}`,
+        pageWidth - 25,
+        pageHeight - 5
+    );
+}
+
+
+/* =========================================================
+   GENERATE QUOTATION
+   ========================================================= */
+
+async function generateQuotation() {
+
+    getClientDetails();
+
+    if (!quotation.clientName) {
+
+        alert(
+            "Please enter the client name."
+        );
+
+        return;
+    }
+
+    if (
+        !quotation.installationLocation
+    ) {
+
+        alert(
+            "Please enter the installation location."
+        );
+
+        return;
+    }
+
+    if (!jsPDFConstructor) {
+
+        alert(
+            "PDF library could not be loaded. Please check your internet connection and reload the page."
+        );
+
+        return;
+    }
+
+    let headerData = null;
+    let footerData = null;
+
+    try {
+
+        headerData =
+            await imageToDataURL(
+                "header.jpeg"
+            );
+
+    } catch (error) {
+
+        console.warn(
+            "header.jpeg could not be loaded.",
+            error
+        );
+    }
+
+    try {
+
+        footerData =
+            await imageToDataURL(
+                "footer.jpeg"
+            );
+
+    } catch (error) {
+
+        console.warn(
+            "footer.jpeg could not be loaded.",
+            error
+        );
+    }
+
+    try {
+
+        createPDF(
+            headerData,
+            footerData
+        );
+
+    } catch (error) {
+
+        console.error(
+            "PDF generation error:",
+            error
+        );
+
+        alert(
+            "The quotation could not be generated. Please check the browser console for details."
+        );
+    }
+}
+
+
+/* =========================================================
+   CREATE PDF
+   ========================================================= */
+
+function createPDF(
+    headerData,
+    footerData
+) {
 
     const doc =
-        new jsPDF({
+        new jsPDFConstructor({
             orientation: "portrait",
             unit: "mm",
             format: "a4"
         });
 
-
-    /* --------------------------------
-       COLORS
-    -------------------------------- */
-
-    const blue =
-        [0, 75, 153];
-
-    const cyan =
-        [0, 166, 166];
-
-    const dark =
-        [16, 42, 67];
-
-    const light =
-        [235, 246, 252];
-
-
-    /* --------------------------------
-       PAGE SETTINGS
-    -------------------------------- */
-
     const pageWidth =
         doc.internal.pageSize.getWidth();
-
 
     const pageHeight =
         doc.internal.pageSize.getHeight();
 
+    const margin = 12;
 
-    const margin = 14;
+    const headerHeight = 45;
 
+    const footerHeight = 38;
 
-    /* --------------------------------
-       HEADER
-    -------------------------------- */
-
-    doc.setFillColor(
-        blue[0],
-        blue[1],
-        blue[2]
+    addHeaderImage(
+        doc,
+        headerData
     );
 
-
-    doc.rect(
-        0,
-        0,
-        pageWidth,
-        29,
-        "F"
-    );
+    let y =
+        headerHeight + 5;
 
 
-    doc.setTextColor(
-        255,
-        255,
-        255
-    );
-
+    /* =====================================================
+       TITLE
+    ===================================================== */
 
     doc.setFont(
         "helvetica",
         "bold"
     );
 
-
     doc.setFontSize(18);
 
-
-    doc.text(
-        "HOTPOINT ENGINEERING DIVISION",
-        pageWidth / 2,
-        12,
-        {
-            align: "center"
-        }
-    );
-
-
-    doc.setFontSize(10);
-
-    doc.setFont(
-        "helvetica",
-        "normal"
-    );
-
-
-    doc.text(
-        "HVAC WORKS QUOTATION",
-        pageWidth / 2,
-        20,
-        {
-            align: "center"
-        }
-    );
-
-
-    /* --------------------------------
-       QUOTATION DATE
-    -------------------------------- */
-
-    const date =
-        new Date();
-
-
-    const dateString =
-        date.toLocaleDateString(
-            "en-GB"
-        );
-
-
     doc.setTextColor(
-        dark[0],
-        dark[1],
-        dark[2]
+        7,
+        89,
+        133
     );
 
+    doc.text(
+        "QUOTATION",
+        pageWidth / 2,
+        y,
+        {
+            align: "center"
+        }
+    );
+
+    y += 10;
+
+
+    /* =====================================================
+       CLIENT DETAILS
+    ===================================================== */
 
     doc.setFontSize(9);
 
-
-    doc.text(
-        `Date: ${dateString}`,
-        pageWidth - margin,
-        37,
-        {
-            align: "right"
-        }
+    doc.setTextColor(
+        30,
+        41,
+        59
     );
 
-
-    let y = 44;
-
-
-    /* =================================
-       1. EQUIPMENT
-    ================================= */
-
-    addSectionHeading(
-        doc,
-        "1. EQUIPMENT",
-        y,
-        blue
-    );
-
-
-    y += 8;
-
-
-    const capacities =
-        getUniqueCapacities();
-
-
-    const equipmentRows =
-        capacities.map(capacity => {
-
-            const rooms =
-                state.rooms.filter(
-                    room =>
-                        room.acCapacity === capacity
-                );
-
-
-            const quantity =
-                rooms.length;
-
-
-            const price =
-                rooms[0].acPrice;
-
-
-            const total =
-                quantity * price;
-
-
-            return [
-
-                formatCapacity(capacity),
-
-                quantity,
-
-                formatCurrencyPlain(price),
-
-                formatCurrencyPlain(total)
-
-            ];
-
-        });
-
-
-    equipmentRows.push([
-
-        "",
-
-        "",
-
-        "Equipment Total",
-
-        formatCurrencyPlain(
-            getEquipmentTotal()
-        )
-
-    ]);
-
-
-    doc.autoTable({
-
-        startY: y,
-
-        head: [[
-            "Description",
-            "Qty",
-            "Unit Price (KES)",
-            "Total (KES)"
-        ]],
-
-        body: equipmentRows,
-
-        theme: "grid",
-
-        headStyles: {
-            fillColor: blue,
-            textColor: 255,
-            fontStyle: "bold"
-        },
-
-        styles: {
-            fontSize: 9,
-            cellPadding: 3
-        },
-
-        columnStyles: {
-            1: {
-                halign: "center"
-            },
-
-            2: {
-                halign: "right"
-            },
-
-            3: {
-                halign: "right"
-            }
-        }
-
-    });
-
-
-    y =
-        doc.lastAutoTable.finalY + 10;
-
-
-    /* =================================
-       2. COPPER
-    ================================= */
-
-    addSectionHeading(
-        doc,
-        "2. COPPER AND ACCESSORIES",
-        y,
-        cyan
-    );
-
-
-    y += 8;
-
-
-    doc.autoTable({
-
-        startY: y,
-
-        head: [[
-            "Description",
-            "Total Length (m)",
-            "Cost / Metre (KES)",
-            "Total (KES)"
-        ]],
-
-        body: [[
-
-            "Copper & Accessories",
-
-            formatNumber(
-                getCopperTotalLength()
-            ),
-
-            formatCurrencyPlain(
-                state.copperRate
-            ),
-
-            formatCurrencyPlain(
-                getCopperCost()
-            )
-
-        ]],
-
-        theme: "grid",
-
-        headStyles: {
-            fillColor: cyan,
-            textColor: 255,
-            fontStyle: "bold"
-        },
-
-        styles: {
-            fontSize: 9,
-            cellPadding: 3
-        },
-
-        columnStyles: {
-
-            1: {
-                halign: "center"
-            },
-
-            2: {
-                halign: "right"
-            },
-
-            3: {
-                halign: "right"
-            }
-
-        }
-
-    });
-
-
-    y =
-        doc.lastAutoTable.finalY + 10;
-
-
-    /* =================================
-       3. DRAINAGE
-    ================================= */
-
-    addSectionHeading(
-        doc,
-        "3. DRAINAGE",
-        y,
-        blue
-    );
-
-
-    y += 8;
-
-
-    doc.autoTable({
-
-        startY: y,
-
-        head: [[
-            "Description",
-            "Total Length (m)",
-            "Cost / Metre (KES)",
-            "Total (KES)"
-        ]],
-
-        body: [[
-
-            "PVC Drainage & Accessories",
-
-            formatNumber(
-                getDrainageTotalLength()
-            ),
-
-            formatCurrencyPlain(
-                state.drainageRate
-            ),
-
-            formatCurrencyPlain(
-                getDrainageCost()
-            )
-
-        ]],
-
-        theme: "grid",
-
-        headStyles: {
-            fillColor: blue,
-            textColor: 255,
-            fontStyle: "bold"
-        },
-
-        styles: {
-            fontSize: 9,
-            cellPadding: 3
-        },
-
-        columnStyles: {
-
-            1: {
-                halign: "center"
-            },
-
-            2: {
-                halign: "right"
-            },
-
-            3: {
-                halign: "right"
-            }
-
-        }
-
-    });
-
-
-    y =
-        doc.lastAutoTable.finalY + 10;
-
-
-    /* =================================
-       ADDITIONAL ITEMS
-    ================================= */
-
-    if (
-        state.otherItems.length > 0
-    ) {
-
-        addSectionHeading(
-            doc,
-            "4. ADDITIONAL ITEMS",
-            y,
-            cyan
-        );
-
-
-        y += 8;
-
-
-        const otherRows =
-            state.otherItems.map(
-                item => [
-
-                    item.name,
-
-                    `${item.quantity} ${item.unit}`,
-
-                    formatCurrencyPlain(
-                        item.unitPrice
-                    ),
-
-                    formatCurrencyPlain(
-                        item.total
-                    )
-
-                ]
+    const clientRows = [
+
+        [
+            "CLIENT:",
+            quotation.clientName
+        ],
+
+        [
+            "LOCATION:",
+            quotation.installationLocation
+        ],
+
+        [
+            "SALES PERSON:",
+            quotation.salesPerson
+        ],
+
+        [
+            "PHONE:",
+            quotation.salesPhone
+        ],
+
+        [
+            "EMAIL:",
+            quotation.salesEmail
+        ]
+    ];
+
+    clientRows.forEach(
+        row => {
+
+            doc.setFont(
+                "helvetica",
+                "bold"
             );
 
+            doc.text(
+                row[0],
+                margin,
+                y
+            );
+
+            doc.setFont(
+                "helvetica",
+                "normal"
+            );
+
+            doc.text(
+                row[1] || "",
+                margin + 32,
+                y
+            );
+
+            y += 5;
+        }
+    );
+
+    y += 5;
+
+
+    /* =====================================================
+       EQUIPMENT
+    ===================================================== */
+
+    doc.setFont(
+        "helvetica",
+        "bold"
+    );
+
+    doc.setFontSize(11);
+
+    doc.text(
+        "1. EQUIPMENT",
+        margin,
+        y
+    );
+
+    y += 3;
+
+    const equipmentRows =
+        quotation.acPrices.map(
+            item => [
+
+                `${item.capacity.toLocaleString()} BTU/hr`,
+
+                item.quantity,
+
+                money(item.unitPrice),
+
+                money(item.total)
+            ]
+        );
+
+    if (
+        typeof doc.autoTable ===
+        "function"
+    ) {
 
         doc.autoTable({
 
             startY: y,
 
-            head: [[
-                "Description",
-                "Quantity",
-                "Unit Price (KES)",
-                "Total (KES)"
-            ]],
+            head: [
+                [
+                    "AC Capacity",
+                    "Qty",
+                    "Unit Price",
+                    "Total"
+                ]
+            ],
 
-            body: otherRows,
+            body: equipmentRows,
 
             theme: "grid",
 
             headStyles: {
-                fillColor: cyan,
+                fillColor: [
+                    7,
+                    89,
+                    133
+                ],
+
                 textColor: 255,
+
                 fontStyle: "bold"
             },
 
             styles: {
-                fontSize: 9,
-                cellPadding: 3
+                fontSize: 8,
+                cellPadding: 2.5
             },
 
             columnStyles: {
+
+                1: {
+                    halign: "right"
+                },
 
                 2: {
                     halign: "right"
@@ -2551,381 +2432,576 @@ function generatePDF() {
                 3: {
                     halign: "right"
                 }
+            },
 
+            margin: {
+                left: margin,
+                right: margin,
+                bottom: footerHeight
             }
-
         });
 
-
         y =
-            doc.lastAutoTable.finalY + 10;
-
+            doc.lastAutoTable.finalY + 8;
     }
 
 
-    /* =================================
-       TOTAL HVAC WORKS
-    ================================= */
-
-    const hvac =
-        getTotalHVACWorks();
-
-
-    const exclusive =
-        getExclusiveSummaryTotal();
-
-
-    const vat =
-        getVAT();
-
-
-    const inclusive =
-        getInclusiveTotal();
-
-
-    /* Check page space */
-
-    if (
-        y > pageHeight - 90
-    ) {
-
-        doc.addPage();
-
-        y = 20;
-
-    }
-
-
-    addSectionHeading(
-        doc,
-        "TOTAL HVAC WORKS",
-        y,
-        dark
-    );
-
-
-    y += 9;
-
-
-    doc.setFillColor(
-        light[0],
-        light[1],
-        light[2]
-    );
-
-
-    doc.rect(
-        margin,
-        y,
-        pageWidth - margin * 2,
-        12,
-        "F"
-    );
-
+    /* =====================================================
+       COPPER
+    ===================================================== */
 
     doc.setFont(
         "helvetica",
         "bold"
     );
 
-
-    doc.setFontSize(12);
-
-
-    doc.setTextColor(
-        dark[0],
-        dark[1],
-        dark[2]
-    );
-
+    doc.setFontSize(11);
 
     doc.text(
-        "Total HVAC Works - Exclusive of VAT",
-        margin + 4,
-        y + 8
+        "2. COPPER AND ACCESSORIES",
+        margin,
+        y
     );
 
+    y += 3;
 
-    doc.text(
-        formatCurrencyPlain(hvac),
-        pageWidth - margin - 4,
-        y + 8,
-        {
-            align: "right"
-        }
-    );
-
-
-    y += 20;
-
-
-    /* =================================
-       SUMMARY
-    ================================= */
-
-    addSectionHeading(
-        doc,
-        "SUMMARY",
-        y,
-        blue
-    );
-
-
-    y += 8;
-
-
-    const summaryRows = [
-
-        [
-            "Preliminaries",
-            "1 Lot",
-            "15,000.00"
-        ],
-
-        [
-            "As Built Drawing",
-            "1 Lot",
-            "5,000.00"
-        ],
-
-        [
-            "Total HVAC Works",
-            "1 Lot",
-            formatCurrencyPlain(hvac)
-        ]
-
-    ];
-
+    const totalCopperLength =
+        quotation.rooms.reduce(
+            (sum, room) =>
+                sum +
+                Number(
+                    room.copper || 0
+                ),
+            0
+        );
 
     doc.autoTable({
 
         startY: y,
 
-        head: [[
-            "Description",
-            "Quantity",
-            "Total (KES)"
-        ]],
+        head: [
+            [
+                "Item",
+                "Quantity",
+                "Unit Price",
+                "Total"
+            ]
+        ],
 
-        body: summaryRows,
+        body: [
+
+            [
+                "Copper",
+
+                `${number(
+                    totalCopperLength
+                )} m`,
+
+                money(
+                    quotation.copperRate
+                ),
+
+                money(
+                    getCopperTotal()
+                )
+            ]
+
+        ],
 
         theme: "grid",
 
         headStyles: {
-            fillColor: blue,
-            textColor: 255,
-            fontStyle: "bold"
+            fillColor: [
+                7,
+                89,
+                133
+            ],
+
+            textColor: 255
         },
 
         styles: {
-            fontSize: 9,
-            cellPadding: 3
+            fontSize: 8,
+            cellPadding: 2.5
         },
 
-        columnStyles: {
-
-            1: {
-                halign: "center"
-            },
-
-            2: {
-                halign: "right"
-            }
-
+        margin: {
+            left: margin,
+            right: margin,
+            bottom: footerHeight
         }
-
     });
-
 
     y =
         doc.lastAutoTable.finalY + 8;
 
 
-    /* =================================
-       VAT SUMMARY
-    ================================= */
-
-    doc.setFont(
-        "helvetica",
-        "normal"
-    );
-
-
-    doc.setFontSize(10);
-
-
-    doc.text(
-        "Total Exclusive of VAT:",
-        pageWidth - 85,
-        y
-    );
-
-
-    doc.text(
-        formatCurrencyPlain(exclusive),
-        pageWidth - margin,
-        y,
-        {
-            align: "right"
-        }
-    );
-
-
-    y += 7;
-
-
-    doc.text(
-        "VAT @ 16%:",
-        pageWidth - 85,
-        y
-    );
-
-
-    doc.text(
-        formatCurrencyPlain(vat),
-        pageWidth - margin,
-        y,
-        {
-            align: "right"
-        }
-    );
-
-
-    y += 10;
-
-
-    /* =================================
-       GRAND TOTAL
-    ================================= */
-
-    doc.setFillColor(
-        blue[0],
-        blue[1],
-        blue[2]
-    );
-
-
-    doc.rect(
-        margin,
-        y,
-        pageWidth - margin * 2,
-        15,
-        "F"
-    );
-
-
-    doc.setTextColor(
-        255,
-        255,
-        255
-    );
-
+    /* =====================================================
+       DRAINAGE
+    ===================================================== */
 
     doc.setFont(
         "helvetica",
         "bold"
     );
 
+    doc.setFontSize(11);
+
+    doc.text(
+        "3. DRAINAGE AND ACCESSORIES",
+        margin,
+        y
+    );
+
+    y += 3;
+
+    const totalDrainageLength =
+        quotation.rooms.reduce(
+            (sum, room) =>
+                sum +
+                Number(
+                    room.drainage || 0
+                ),
+            0
+        );
+
+    doc.autoTable({
+
+        startY: y,
+
+        head: [
+            [
+                "Item",
+                "Quantity",
+                "Unit Price",
+                "Total"
+            ]
+        ],
+
+        body: [
+
+            [
+                "Drainage",
+
+                `${number(
+                    totalDrainageLength
+                )} m`,
+
+                money(
+                    quotation.drainageRate
+                ),
+
+                money(
+                    getDrainageTotal()
+                )
+            ]
+
+        ],
+
+        theme: "grid",
+
+        headStyles: {
+            fillColor: [
+                7,
+                89,
+                133
+            ],
+
+            textColor: 255
+        },
+
+        styles: {
+            fontSize: 8,
+            cellPadding: 2.5
+        },
+
+        margin: {
+            left: margin,
+            right: margin,
+            bottom: footerHeight
+        }
+    });
+
+    y =
+        doc.lastAutoTable.finalY + 8;
+
+
+    /* =====================================================
+       ADDITIONAL WORKS
+    ===================================================== */
+
+    if (
+        quotation.additionalItems.length >
+        0
+    ) {
+
+        doc.setFont(
+            "helvetica",
+            "bold"
+        );
+
+        doc.setFontSize(11);
+
+        doc.text(
+            "4. ADDITIONAL WORKS",
+            margin,
+            y
+        );
+
+        y += 3;
+
+        const additionalRows =
+            quotation.additionalItems.map(
+                item => [
+
+                    item.name,
+
+                    `${number(
+                        item.quantity
+                    )} ${item.unit}`,
+
+                    money(
+                        item.unitPrice
+                    ),
+
+                    money(
+                        item.total
+                    )
+                ]
+            );
+
+        doc.autoTable({
+
+            startY: y,
+
+            head: [
+                [
+                    "Item",
+                    "Quantity",
+                    "Unit Price",
+                    "Total"
+                ]
+            ],
+
+            body:
+                additionalRows,
+
+            theme: "grid",
+
+            headStyles: {
+                fillColor: [
+                    7,
+                    89,
+                    133
+                ],
+
+                textColor: 255
+            },
+
+            styles: {
+                fontSize: 8,
+                cellPadding: 2.5
+            },
+
+            margin: {
+                left: margin,
+                right: margin,
+                bottom: footerHeight
+            }
+        });
+
+        y =
+            doc.lastAutoTable.finalY + 8;
+    }
+
+
+    /* =====================================================
+       HVAC TOTAL
+    ===================================================== */
+
+    const hvacWorks =
+        getHVACTotal();
+
+    if (
+        y >
+        pageHeight -
+        footerHeight -
+        45
+    ) {
+
+        doc.addPage();
+
+        addHeaderImage(
+            doc,
+            headerData
+        );
+
+        y =
+            headerHeight + 8;
+    }
+
+    doc.setFillColor(
+        224,
+        242,
+        254
+    );
+
+    doc.roundedRect(
+        margin,
+        y,
+        pageWidth -
+            margin * 2,
+        15,
+        2,
+        2,
+        "F"
+    );
+
+    doc.setFont(
+        "helvetica",
+        "bold"
+    );
+
+    doc.setFontSize(11);
+
+    doc.setTextColor(
+        7,
+        89,
+        133
+    );
+
+    doc.text(
+        "TOTAL HVAC WORKS",
+        margin + 4,
+        y + 9
+    );
+
+    doc.text(
+        money(hvacWorks),
+        pageWidth -
+            margin -
+            4,
+        y + 9,
+        {
+            align: "right"
+        }
+    );
+
+    y += 24;
+
+
+    /* =====================================================
+       SUMMARY
+    ===================================================== */
+
+    if (
+        y >
+        pageHeight -
+        footerHeight -
+        60
+    ) {
+
+        doc.addPage();
+
+        addHeaderImage(
+            doc,
+            headerData
+        );
+
+        y =
+            headerHeight + 8;
+    }
 
     doc.setFontSize(12);
 
-
-    doc.text(
-        "NEW TOTAL INCLUSIVE OF VAT",
-        margin + 4,
-        y + 10
-    );
-
-
-    doc.text(
-        formatCurrencyPlain(inclusive),
-        pageWidth - margin - 4,
-        y + 10,
-        {
-            align: "right"
-        }
-    );
-
-
-    /* =================================
-       FOOTER
-    ================================= */
-
     doc.setTextColor(
-        100,
-        100,
-        100
+        7,
+        89,
+        133
     );
 
+    doc.text(
+        "SUMMARY",
+        margin,
+        y
+    );
+
+    y += 4;
+
+    const preliminaries = 15000;
+
+    const asBuiltDrawing = 5000;
+
+    const subtotal =
+        preliminaries +
+        asBuiltDrawing +
+        hvacWorks;
+
+    const vat =
+        subtotal * 0.16;
+
+    const grandTotal =
+        subtotal + vat;
+
+    doc.autoTable({
+
+        startY: y,
+
+        head: [
+            [
+                "Description",
+                "Qty",
+                "Unit Price",
+                "Total"
+            ]
+        ],
+
+        body: [
+
+            [
+                "Preliminaries",
+                "1 lot",
+                money(
+                    preliminaries
+                ),
+                money(
+                    preliminaries
+                )
+            ],
+
+            [
+                "As Built Drawing",
+                "1 lot",
+                money(
+                    asBuiltDrawing
+                ),
+                money(
+                    asBuiltDrawing
+                )
+            ],
+
+            [
+                "Total HVAC Works",
+                "1 lot",
+                money(
+                    hvacWorks
+                ),
+                money(
+                    hvacWorks
+                )
+            ]
+
+        ],
+
+        theme: "grid",
+
+        headStyles: {
+            fillColor: [
+                7,
+                89,
+                133
+            ],
+
+            textColor: 255
+        },
+
+        styles: {
+            fontSize: 8,
+            cellPadding: 2.5
+        },
+
+        margin: {
+            left: margin,
+            right: margin,
+            bottom: footerHeight
+        }
+    });
+
+    y =
+        doc.lastAutoTable.finalY + 8;
+
+
+    /* =====================================================
+       VAT
+    ===================================================== */
 
     doc.setFont(
         "helvetica",
         "normal"
     );
 
+    doc.setFontSize(10);
 
-    doc.setFontSize(8);
-
+    doc.setTextColor(
+        30,
+        41,
+        59
+    );
 
     doc.text(
-        "Prepared by Moses Ntella Taa",
-        pageWidth / 2,
-        pageHeight - 15,
+        "Total before VAT:",
+        margin,
+        y
+    );
+
+    doc.text(
+        money(subtotal),
+        pageWidth -
+            margin,
+        y,
         {
-            align: "center"
+            align: "right"
         }
     );
 
+    y += 7;
 
     doc.text(
-        "hvacmsaintern@hotpoint.co.ke",
-        pageWidth / 2,
-        pageHeight - 10,
+        "VAT @ 16%:",
+        margin,
+        y
+    );
+
+    doc.text(
+        money(vat),
+        pageWidth -
+            margin,
+        y,
         {
-            align: "center"
+            align: "right"
         }
     );
 
-
-    /* =================================
-       SAVE
-    ================================= */
-
-    const fileName =
-        `Onsite_HVAC_Quotation_${getDateForFile()}.pdf`;
+    y += 9;
 
 
-    doc.save(fileName);
-
-}
-
-
-/* ============================================================
-   PDF SECTION HEADING
-============================================================ */
-
-function addSectionHeading(
-    doc,
-    text,
-    y,
-    color
-) {
+    /* =====================================================
+       GRAND TOTAL
+    ===================================================== */
 
     doc.setFillColor(
-        color[0],
-        color[1],
-        color[2]
+        7,
+        89,
+        133
     );
 
-
-    doc.rect(
-        14,
+    doc.roundedRect(
+        margin,
         y - 5,
-        182,
-        8,
+        pageWidth -
+            margin * 2,
+        17,
+        2,
+        2,
         "F"
     );
 
+    doc.setFont(
+        "helvetica",
+        "bold"
+    );
+
+    doc.setFontSize(11);
 
     doc.setTextColor(
         255,
@@ -2933,118 +3009,325 @@ function addSectionHeading(
         255
     );
 
+    doc.text(
+        "TOTAL COST INCLUSIVE OF 16% VAT",
+        margin + 4,
+        y + 5
+    );
+
+    doc.text(
+        money(grandTotal),
+        pageWidth -
+            margin -
+            4,
+        y + 5,
+        {
+            align: "right"
+        }
+    );
+
+    y += 23;
+
+
+    /* =====================================================
+       TERMS AND CONDITIONS
+    ===================================================== */
+
+    if (
+        y >
+        pageHeight -
+        footerHeight -
+        60
+    ) {
+
+        doc.addPage();
+
+        addHeaderImage(
+            doc,
+            headerData
+        );
+
+        y =
+            headerHeight + 8;
+    }
 
     doc.setFont(
         "helvetica",
         "bold"
     );
 
+    doc.setFontSize(11);
 
-    doc.setFontSize(10);
-
+    doc.setTextColor(
+        7,
+        89,
+        133
+    );
 
     doc.text(
-        text,
-        18,
-        y + 0.5
+        "TERMS AND CONDITIONS OF SALES",
+        margin,
+        y
     );
 
-}
+    y += 6;
 
+    const terms = [
 
-/* ============================================================
-   FORMATTING
-============================================================ */
+        [
+            "Terms of payment:",
+            "100% advance payment payable to HOTPOINT APPLIANCES LTD or as per approved payment terms."
+        ],
 
-function formatNumber(value) {
+        [
+            "Warranty:",
+            "Two years warranty on equipment. The warranty shall be applicable as per our warranty clause."
+        ],
 
-    return Number(
-        value || 0
-    ).toLocaleString(
-        "en-KE",
-        {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
+        [
+            "Delivery timelines:",
+            "8-12 weeks upon confirmation of order and upon reception of advance payment."
+        ],
+
+        [
+            "Quotation validity:",
+            "Our quotation is valid for a period of 14 days."
+        ],
+
+        [
+            "Note - Exclusions:",
+            "Our scope of work is limited to as per the above priced BOQ. Any materials not mentioned above are not in our scope."
+        ],
+
+        [
+            "Other exclusions:",
+            "Scaffolding, Glass cutting, electrical and masonry works (Wall chase, drilling and work on false ceiling)."
+        ],
+
+        [
+            "Electrical works:",
+            "All the electrical works related to powering of the Air Conditioner are to be done by the client. However, we will guide on the same."
+        ],
+
+        [
+            "Power requirements:",
+            "Three phase (400 V) power to be provided at the outdoor (within 5 m of each unit) and single phase (210 V) power to each indoor unit (within 1 m of each unit) with necessary accessories."
+        ],
+
+        [
+            "Support required:",
+            "Access to site, water and electricity. Safe custody of equipment, tools and installation materials at site."
+        ],
+
+        [
+            "Operating temperature:",
+            "Kindly note that the system's ideal operating temperature is minimum of 22-24 Degrees Celsius."
+        ]
+
+    ];
+
+    doc.autoTable({
+
+        startY: y,
+
+        body: terms,
+
+        theme: "plain",
+
+        styles: {
+
+            fontSize: 7.5,
+
+            cellPadding: 2,
+
+            textColor: [
+                40,
+                40,
+                40
+            ],
+
+            valign: "top"
+        },
+
+        columnStyles: {
+
+            0: {
+                fontStyle: "bold",
+                cellWidth: 36
+            },
+
+            1: {
+                cellWidth:
+                    pageWidth -
+                    margin * 2 -
+                    36
+            }
+        },
+
+        margin: {
+
+            left: margin,
+
+            right: margin,
+
+            bottom:
+                footerHeight
         }
-    );
+    });
 
+
+    /* =====================================================
+       FOOTERS
+    ===================================================== */
+
+    const totalPages =
+        doc.internal.getNumberOfPages();
+
+    for (
+        let i = 1;
+        i <= totalPages;
+        i++
+    ) {
+
+        doc.setPage(i);
+
+        addFooterToPage(
+            doc,
+            footerData,
+            i
+        );
+    }
+
+
+    /* =====================================================
+       SAVE PDF
+    ===================================================== */
+
+    const safeClientName =
+        quotation.clientName
+            .replace(
+                /[^a-z0-9]/gi,
+                "_"
+            );
+
+    const filename =
+        `HVAC_Quotation_${
+            safeClientName ||
+            "Client"
+        }.pdf`;
+
+    doc.save(filename);
+
+
+    /* =====================================================
+       SUCCESS PAGE
+    ===================================================== */
+
+    showPage(14);
 }
 
 
-function formatCurrency(value) {
+/* =========================================================
+   START NEW QUOTATION
+   ========================================================= */
 
-    return `KES ${formatNumber(value)}`;
+function startNewQuotation() {
 
-}
+    quotation = {
 
+        rooms: [],
 
-function formatCurrencyPlain(value) {
+        copperRate: 3200,
 
-    return formatNumber(value);
+        drainageRate: 0,
 
-}
+        additionalItems: [],
 
+        acPrices: [],
 
-function formatCapacity(capacity) {
+        clientName: "",
 
-    return `${Number(capacity).toLocaleString()} BTU/h`;
+        installationLocation: "",
 
-}
+        salesPerson: "",
 
+        salesPhone: "",
 
-function getDateForFile() {
-
-    const date =
-        new Date();
-
-
-    const year =
-        date.getFullYear();
-
-
-    const month =
-        String(
-            date.getMonth() + 1
-        ).padStart(2, "0");
+        salesEmail: ""
+    };
 
 
-    const day =
-        String(
-            date.getDate()
-        ).padStart(2, "0");
-
-
-    return `${year}-${month}-${day}`;
-
-}
-
-
-/* ============================================================
-   SECURITY / HTML ESCAPING
-============================================================ */
-
-function escapeHTML(value) {
-
-    return String(value)
-        .replace(
-            /&/g,
-            "&amp;"
-        )
-        .replace(
-            /</g,
-            "&lt;"
-        )
-        .replace(
-            />/g,
-            "&gt;"
-        )
-        .replace(
-            /"/g,
-            "&quot;"
-        )
-        .replace(
-            /'/g,
-            "&#039;"
+    const roomContainer =
+        document.getElementById(
+            "roomInputContainer"
         );
 
+    if (roomContainer) {
+
+        roomContainer.innerHTML = `
+
+            <div class="input-row room-input-row">
+
+                <input
+                    type="text"
+                    class="room-name-input"
+                    placeholder="e.g. Living Room"
+                >
+
+                <button
+                    type="button"
+                    class="remove-input"
+                    onclick="removeRoomInput(this)"
+                >
+                    ×
+                </button>
+
+            </div>
+        `;
+    }
+
+
+    [
+        "clientName",
+        "installationLocation",
+        "salesPerson",
+        "salesPhone",
+        "salesEmail"
+    ].forEach(id => {
+
+        const element =
+            document.getElementById(id);
+
+        if (element) {
+            element.value = "";
+        }
+    });
+
+
+    showPage(1);
 }
+
+
+/* =========================================================
+   YEAR
+   ========================================================= */
+
+document.addEventListener(
+    "DOMContentLoaded",
+    function() {
+
+        const year =
+            document.getElementById(
+                "currentYear"
+            );
+
+        if (year) {
+
+            year.textContent =
+                new Date()
+                    .getFullYear();
+        }
+
+        showPage(1);
+    }
+);
