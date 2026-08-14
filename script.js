@@ -2377,13 +2377,13 @@ async function generateQuotation() {
 
         headerData =
             await imageToDataURL(
-                "header.jpeg"
+                "Header.jpeg"
             );
 
     } catch (error) {
 
         console.warn(
-            "header.jpeg could not be loaded.",
+            "Header.jpeg could not be loaded.",
             error
         );
     }
