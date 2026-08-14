@@ -844,8 +844,7 @@ function renderCopperPreview() {
 
 
 /* =========================================================
-   STEP 7
-   COOLING LOAD
+   STEP 7 - COOLING LOAD & AC RECOMMENDATION
    ========================================================= */
 
 function goToCoolingLoad() {
@@ -863,53 +862,64 @@ function renderCoolingLoadInputs() {
             "coolingLoadInputs"
         );
 
-    if (!container) return;
+    if (!container) {
+        console.error(
+            "Element #coolingLoadInputs not found."
+        );
+        return;
+    }
 
     container.innerHTML =
-        quotation.rooms
-            .map((room, index) => `
+        quotation.rooms.map(
+            (room, index) => {
 
-                <div class="card">
+                return `
 
-                    <h3>
-                        ${index + 1}.
-                        ${escapeHTML(room.name)}
-                    </h3>
+                    <div class="cooling-card">
 
-                    <p>
-                        Room Area:
-                        <strong>
-                            ${number(room.area)} m²
-                        </strong>
-                    </p>
+                        <h3>
+                            ${index + 1}.
+                            ${escapeHTML(room.name)}
+                        </h3>
 
-                    <label>
-                        Base Cooling Load Factor
+                        <p>
+                            Room Area:
+                            <strong>
+                                ${number(room.area)} m²
+                            </strong>
+                        </p>
 
-                        <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            id="factor-${index}"
-                            value="${room.coolingFactor || ""}"
-                            placeholder="e.g. 700"
-                        >
-                    </label>
+                        <label>
+                            Base Cooling Load Factor
 
-                    <div class="info-box">
+                            <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                id="factor-${index}"
+                                value="${
+                                    room.coolingFactor || ""
+                                }"
+                                placeholder="e.g. 700"
+                            >
+                        </label>
 
-                        Calculated Cooling Load:
+                        <div class="area-result">
 
-                        <strong id="load-${index}">
-                            0 BTU/hr
-                        </strong>
+                            Calculated Cooling Load:
+
+                            <strong id="load-${index}">
+                                0 BTU/hr
+                            </strong>
+
+                        </div>
 
                     </div>
 
-                </div>
+                `;
+            }
+        ).join("");
 
-            `)
-            .join("");
 
     quotation.rooms.forEach(
         (room, index) => {
@@ -923,55 +933,105 @@ function renderCoolingLoadInputs() {
 
                 input.addEventListener(
                     "input",
-                    () =>
+                    function() {
+
                         updateCoolingLoadPreview(
                             index
-                        )
+                        );
+
+                    }
                 );
+
             }
+
         }
     );
 }
 
 
+/* =========================================================
+   LIVE COOLING LOAD CALCULATION
+   ========================================================= */
+
 function updateCoolingLoadPreview(index) {
 
-    const factor =
-        Number(
-            document.getElementById(
-                `factor-${index}`
-            )?.value
+    const factorInput =
+        document.getElementById(
+            `factor-${index}`
+        );
+
+    const loadOutput =
+        document.getElementById(
+            `load-${index}`
         );
 
     const room =
         quotation.rooms[index];
 
-    if (!room) return;
+    if (
+        !factorInput ||
+        !loadOutput ||
+        !room
+    ) {
+        return;
+    }
 
-    const load =
-        room.area * factor;
-
-    const output =
-        document.getElementById(
-            `load-${index}`
+    const factor =
+        Number(
+            factorInput.value
         );
 
-    if (output) {
+    if (
+        isNaN(factor) ||
+        factor <= 0
+    ) {
 
-        output.textContent =
-            `${number(load)} BTU/hr`;
+        loadOutput.textContent =
+            "0 BTU/hr";
+
+        return;
     }
+
+    const load =
+        Number(room.area) *
+        factor;
+
+    loadOutput.textContent =
+        `${number(load)} BTU/hr`;
 }
 
 
+/* =========================================================
+   AC CAPACITY SELECTION
+   ========================================================= */
+
 function selectCapacity(load) {
+
+    const capacities = [
+
+        9000,
+
+        12000,
+
+        18000,
+
+        24000,
+
+        36000,
+
+        48000
+
+    ];
 
     for (
         const capacity
-        of AC_CAPACITIES
+        of capacities
     ) {
 
-        if (load <= capacity) {
+        if (
+            load <= capacity
+        ) {
+
             return capacity;
         }
     }
@@ -980,19 +1040,51 @@ function selectCapacity(load) {
 }
 
 
+/* =========================================================
+   PREVIEW AC RECOMMENDATIONS
+   ========================================================= */
+
 function previewCoolingLoad() {
 
+    if (
+        !quotation.rooms ||
+        quotation.rooms.length === 0
+    ) {
+
+        alert(
+            "No rooms found. Please add rooms first."
+        );
+
+        showPage(1);
+
+        return;
+    }
+
+
     let valid = true;
+
 
     quotation.rooms.forEach(
         (room, index) => {
 
+            const factorInput =
+                document.getElementById(
+                    `factor-${index}`
+                );
+
+            if (!factorInput) {
+
+                valid = false;
+
+                return;
+            }
+
+
             const factor =
                 Number(
-                    document.getElementById(
-                        `factor-${index}`
-                    )?.value
+                    factorInput.value
                 );
+
 
             if (
                 isNaN(factor) ||
@@ -1004,18 +1096,30 @@ function previewCoolingLoad() {
                 return;
             }
 
+
+            /* Save factor */
+
             room.coolingFactor =
                 factor;
 
+
+            /* Calculate cooling load */
+
             room.coolingLoad =
-                room.area * factor;
+                Number(room.area) *
+                factor;
+
+
+            /* Recommend AC */
 
             room.capacity =
                 selectCapacity(
                     room.coolingLoad
                 );
+
         }
     );
+
 
     if (!valid) {
 
@@ -1026,71 +1130,119 @@ function previewCoolingLoad() {
         return;
     }
 
-    renderACPreview();
+
+    /* Create AC recommendation preview */
+
+    renderCoolingLoadPreview();
+
+
+    /* Go to page 8 */
 
     showPage(8);
 }
 
 
 /* =========================================================
-   STEP 8
-   AC PREVIEW
+   DISPLAY AC RECOMMENDATIONS
    ========================================================= */
 
-function renderACPreview() {
+function renderCoolingLoadPreview() {
 
     const container =
         document.getElementById(
-            "acPreview"
+            "coolingLoadPreview"
         );
 
-    if (!container) return;
+
+    if (!container) {
+
+        console.error(
+            "Element #coolingLoadPreview not found."
+        );
+
+        return;
+    }
+
 
     container.innerHTML =
         quotation.rooms
-            .map((room, index) => `
+            .map(
+                (room, index) => {
 
-                <div class="card">
+                    return `
 
-                    <h3>
-                        ${index + 1}.
-                        ${escapeHTML(room.name)}
-                    </h3>
+                        <div class="preview-item">
 
-                    <p>
-                        Area:
-                        ${number(room.area)} m²
-                    </p>
+                            <strong>
+                                ${index + 1}.
+                                ${escapeHTML(room.name)}
+                            </strong>
 
-                    <p>
-                        Cooling Load:
-                        <strong>
-                            ${number(room.coolingLoad)}
-                            BTU/hr
-                        </strong>
-                    </p>
+                            <p>
+                                Area:
+                                ${number(room.area)}
+                                m²
+                            </p>
 
-                    <div class="info-box">
+                            <p>
+                                Cooling Load Factor:
+                                ${number(
+                                    room.coolingFactor
+                                )}
+                            </p>
 
-                        Recommended AC:
+                            <p>
+                                Calculated Cooling Load:
+                                <strong>
+                                    ${number(
+                                        room.coolingLoad
+                                    )}
+                                    BTU/hr
+                                </strong>
+                            </p>
 
-                        <strong>
-                            ${room.capacity.toLocaleString()}
-                            BTU/hr
-                        </strong>
+                            <p>
+                                Recommended AC:
+                            </p>
 
-                    </div>
+                            <span class="capacity-badge">
 
-                </div>
+                                ${room.capacity.toLocaleString()}
+                                BTU/hr
 
-            `)
+                            </span>
+
+                        </div>
+
+                    `;
+
+                }
+            )
             .join("");
 }
 
 
-function goToPrices() {
+/* =========================================================
+   PROCEED FROM AC RECOMMENDATION TO AC PRICES
+   ========================================================= */
+
+function goToACPrices() {
+
+    if (
+        !quotation.rooms ||
+        quotation.rooms.length === 0
+    ) {
+
+        alert(
+            "No AC recommendations found."
+        );
+
+        return;
+    }
+
 
     renderACPriceInputs();
+
 
     showPage(9);
 }
