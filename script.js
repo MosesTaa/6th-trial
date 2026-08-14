@@ -1643,65 +1643,31 @@ function getHVACTotal() {
    PDF HELPERS
    ========================================================= */
 
-function imageToDataURL(url) {
+function loadImage(src) {
     return new Promise((resolve, reject) => {
 
         const img = new Image();
 
-        // IMPORTANT:
-        // Do NOT use crossOrigin here.
-        // header.jpeg and footer.jpeg are hosted
-        // on the same GitHub Pages website.
-
-        img.onload = function() {
-
-            const canvas =
-                document.createElement("canvas");
-
-            canvas.width = img.naturalWidth;
-            canvas.height = img.naturalHeight;
-
-            const ctx =
-                canvas.getContext("2d");
-
-            ctx.drawImage(
-                img,
-                0,
-                0
-            );
-
-            try {
-
-                resolve(
-                    canvas.toDataURL("image/jpeg")
-                );
-
-            } catch (error) {
-
-                reject(error);
-
-            }
+        img.onload = () => {
+            resolve(img);
         };
 
-        img.onerror = function() {
-
+        img.onerror = () => {
             reject(
                 new Error(
-                    "Unable to load image: " + url
+                    "Could not load image: " + src
                 )
             );
-
         };
 
-        // Load directly from the same folder
-        img.src = url;
+        img.src = src;
     });
 }
 
 
 function addFooterToPage(
     doc,
-    footerData,
+    footerImage,
     pageNumber
 ) {
 
@@ -1711,25 +1677,27 @@ function addFooterToPage(
     const pageHeight =
         doc.internal.pageSize.getHeight();
 
+    const footerHeight = 35;
+
     try {
 
-        if (footerData) {
+        if (footerImage) {
 
             doc.addImage(
-                footerData,
+                footerImage,
                 "JPEG",
                 0,
-                pageHeight - 35,
+                pageHeight - footerHeight,
                 pageWidth,
-                35
+                footerHeight
             );
 
         }
 
     } catch (error) {
 
-        console.warn(
-            "Footer image could not be added.",
+        console.error(
+            "Footer image error:",
             error
         );
 
@@ -1814,14 +1782,14 @@ async function generateQuotation() {
     try {
 
         const headerData =
-            await imageToDataURL(
-                "header.jpeg"
-            );
+    await loadImage(
+        "header.jpeg"
+    );
 
-        const footerData =
-            await imageToDataURL(
-                "footer.jpeg"
-            );
+const footerData =
+    await loadImage(
+        "footer.jpeg"
+    );
 
         createPDF(
             headerData,
