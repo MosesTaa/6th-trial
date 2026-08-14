@@ -8,9 +8,14 @@
 
     <link rel="stylesheet" href="style.css">
 
-    <!-- PDF Libraries -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <!-- PDF LIBRARIES -->
+    <script
+        src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js">
+    </script>
+
+    <script
+        src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js">
+    </script>
 </head>
 
 <body>
@@ -24,13 +29,15 @@
 
 <main class="app-container">
 
-    <!-- =========================
+    <!-- =====================================================
          STEP 1 - ROOMS
-    ========================== -->
+    ====================================================== -->
+
     <section class="page active" id="page1">
 
         <div class="page-heading">
             <span class="step-number">1</span>
+
             <div>
                 <h2>Add Rooms</h2>
                 <p>Enter the rooms requiring air conditioning.</p>
@@ -42,11 +49,13 @@
             <div id="roomInputContainer">
 
                 <div class="input-row room-input-row">
+
                     <input
                         type="text"
                         class="room-name-input"
                         placeholder="e.g. Living Room"
                     >
+
                     <button
                         type="button"
                         class="remove-input"
@@ -54,15 +63,24 @@
                     >
                         ×
                     </button>
+
                 </div>
 
             </div>
 
-            <button class="secondary-button" onclick="addRoomInput()">
+            <button
+                type="button"
+                class="secondary-button"
+                onclick="addRoomInput()"
+            >
                 + Add Room
             </button>
 
-            <button class="primary-button full-width" onclick="saveRooms()">
+            <button
+                type="button"
+                class="primary-button full-width"
+                onclick="saveRooms()"
+            >
                 Save Rooms & Continue
             </button>
 
@@ -71,13 +89,15 @@
     </section>
 
 
-    <!-- =========================
+    <!-- =====================================================
          STEP 2 - ROOM PREVIEW
-    ========================== -->
+    ====================================================== -->
+
     <section class="page" id="page2">
 
         <div class="page-heading">
             <span class="step-number">2</span>
+
             <div>
                 <h2>Room Preview</h2>
                 <p>Rename or delete rooms before continuing.</p>
@@ -88,7 +108,11 @@
 
             <div id="roomPreview"></div>
 
-            <button class="primary-button full-width" onclick="goToDimensions()">
+            <button
+                type="button"
+                class="primary-button full-width"
+                onclick="goToDimensions()"
+            >
                 Proceed to Dimensions →
             </button>
 
@@ -97,13 +121,15 @@
     </section>
 
 
-    <!-- =========================
+    <!-- =====================================================
          STEP 3 - DIMENSIONS
-    ========================== -->
+    ====================================================== -->
+
     <section class="page" id="page3">
 
         <div class="page-heading">
             <span class="step-number">3</span>
+
             <div>
                 <h2>Room Dimensions</h2>
                 <p>Enter length and width in metres.</p>
@@ -112,20 +138,26 @@
 
         <div id="dimensionInputs"></div>
 
-        <button class="primary-button full-width" onclick="previewDimensions()">
+        <button
+            type="button"
+            class="primary-button full-width"
+            onclick="previewDimensions()"
+        >
             Preview Dimensions →
         </button>
 
     </section>
 
 
-    <!-- =========================
+    <!-- =====================================================
          STEP 4 - DIMENSION PREVIEW
-    ========================== -->
+    ====================================================== -->
+
     <section class="page" id="page4">
 
         <div class="page-heading">
             <span class="step-number">4</span>
+
             <div>
                 <h2>Dimensions Preview</h2>
                 <p>Confirm the room dimensions and calculated areas.</p>
@@ -136,7 +168,11 @@
 
             <div id="dimensionPreview"></div>
 
-            <button class="primary-button full-width" onclick="goToCopper()">
+            <button
+                type="button"
+                class="primary-button full-width"
+                onclick="goToCopper()"
+            >
                 Proceed to Copper Length →
             </button>
 
@@ -145,13 +181,15 @@
     </section>
 
 
-    <!-- =========================
+    <!-- =====================================================
          STEP 5 - COPPER
-    ========================== -->
+    ====================================================== -->
+
     <section class="page" id="page5">
 
         <div class="page-heading">
             <span class="step-number">5</span>
+
             <div>
                 <h2>Copper Pipe Length</h2>
                 <p>Enter copper pipe length for each room in metres.</p>
@@ -160,20 +198,26 @@
 
         <div id="copperInputs"></div>
 
-        <button class="primary-button full-width" onclick="previewCopper()">
+        <button
+            type="button"
+            class="primary-button full-width"
+            onclick="previewCopper()"
+        >
             Preview Copper Lengths →
         </button>
 
     </section>
 
 
-    <!-- =========================
+    <!-- =====================================================
          STEP 6 - COPPER PREVIEW
-    ========================== -->
+    ====================================================== -->
+
     <section class="page" id="page6">
 
         <div class="page-heading">
             <span class="step-number">6</span>
+
             <div>
                 <h2>Copper Preview</h2>
                 <p>Review the copper requirements.</p>
@@ -184,7 +228,11 @@
 
             <div id="copperPreview"></div>
 
-            <button class="primary-button full-width" onclick="goToCoolingLoad()">
+            <button
+                type="button"
+                class="primary-button full-width"
+                onclick="goToCoolingLoad()"
+            >
                 Proceed to Cooling Load →
             </button>
 
@@ -193,54 +241,76 @@
     </section>
 
 
-    <!-- =========================
+    <!-- =====================================================
          STEP 7 - COOLING LOAD
-    ========================== -->
+    ====================================================== -->
+
     <section class="page" id="page7">
 
         <div class="page-heading">
             <span class="step-number">7</span>
+
             <div>
                 <h2>Cooling Load & AC Selection</h2>
+
                 <p>
                     Enter the base cooling load factor for each room.
                     The factor is multiplied by room area.
                 </p>
+
             </div>
         </div>
 
         <div id="coolingLoadInputs"></div>
 
         <div class="info-box">
+
             <strong>AC Capacities:</strong>
-            9,000 | 12,000 | 18,000 | 24,000 | 36,000 | 48,000 BTU/hr
+
+            9,000 |
+            12,000 |
+            18,000 |
+            24,000 |
+            36,000 |
+            48,000 BTU/hr
+
         </div>
 
-        <button class="primary-button full-width" onclick="previewCoolingLoad()">
+        <button
+            type="button"
+            class="primary-button full-width"
+            onclick="previewCoolingLoad()"
+        >
             Preview AC Recommendations →
         </button>
 
     </section>
 
 
-    <!-- =========================
+    <!-- =====================================================
          STEP 8 - AC PREVIEW
-    ========================== -->
+    ====================================================== -->
+
     <section class="page" id="page8">
 
         <div class="page-heading">
             <span class="step-number">8</span>
+
             <div>
                 <h2>AC Recommendations</h2>
-                <p>Review the calculated cooling requirements.</p>
+                <p>Review the recommended AC capacities.</p>
             </div>
         </div>
 
         <div class="card">
 
-            <div id="coolingLoadPreview"></div>
+            <div id="acPreview"></div>
 
-            <button class="primary-button full-width" onclick="goToACPrices()">
+            <button
+                type="button"
+                class="primary-button full-width"
+                onclick="goToPrices()"
+            >
                 Proceed to AC Prices →
             </button>
 
@@ -249,50 +319,81 @@
     </section>
 
 
-    <!-- =========================
+    <!-- =====================================================
          STEP 9 - AC PRICES
-    ========================== -->
+    ====================================================== -->
+
     <section class="page" id="page9">
 
         <div class="page-heading">
             <span class="step-number">9</span>
+
             <div>
                 <h2>AC Equipment Prices</h2>
-                <p>
-                    Enter the price of each AC capacity used.
-                    Duplicate capacities are automatically removed.
-                </p>
+                <p>Enter the equipment unit price for each AC capacity.</p>
             </div>
         </div>
 
         <div id="acPriceInputs"></div>
 
-        <button class="primary-button full-width" onclick="previewACPrices()">
-            Preview AC Prices →
+        <button
+            type="button"
+            class="primary-button full-width"
+            onclick="saveACPrices()"
+        >
+            Save AC Prices →
         </button>
 
     </section>
 
 
-    <!-- =========================
-         STEP 10 - AC PRICE PREVIEW
-    ========================== -->
+    <!-- =====================================================
+         STEP 10 - COPPER RATE
+    ====================================================== -->
+
     <section class="page" id="page10">
 
         <div class="page-heading">
             <span class="step-number">10</span>
+
             <div>
-                <h2>Equipment Price Preview</h2>
-                <p>Review quantities and prices.</p>
+                <h2>Copper & Drainage Rates</h2>
+                <p>Enter the applicable material rates.</p>
             </div>
         </div>
 
         <div class="card">
 
-            <div id="acPricePreview"></div>
+            <label for="copperRate">
+                Copper Rate (KES/metre)
+            </label>
 
-            <button class="primary-button full-width" onclick="goToDrainage()">
-                Proceed to Drainage →
+            <input
+                id="copperRate"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="e.g. 3200"
+            >
+
+            <label for="drainageRate">
+                Drainage Rate (KES/metre)
+            </label>
+
+            <input
+                id="drainageRate"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="e.g. 500"
+            >
+
+            <button
+                type="button"
+                class="primary-button full-width"
+                onclick="saveMaterialRates()"
+            >
+                Save Rates & Continue →
             </button>
 
         </div>
@@ -300,47 +401,71 @@
     </section>
 
 
-    <!-- =========================
-         STEP 11 - DRAINAGE
-    ========================== -->
+    <!-- =====================================================
+         STEP 11 - ADDITIONAL WORKS
+    ====================================================== -->
+
     <section class="page" id="page11">
 
         <div class="page-heading">
             <span class="step-number">11</span>
+
             <div>
-                <h2>Drainage Pipe Length</h2>
-                <p>Enter drainage PVC pipe length for each room.</p>
+                <h2>Additional Works</h2>
+                <p>Add any additional materials or services.</p>
             </div>
         </div>
 
-        <div id="drainageInputs"></div>
+        <div class="card">
 
-        <button class="primary-button full-width" onclick="previewDrainage()">
-            Preview Drainage →
-        </button>
+            <div id="additionalItems"></div>
+
+            <button
+                type="button"
+                class="secondary-button"
+                onclick="addAdditionalItem()"
+            >
+                + Add Additional Item
+            </button>
+
+            <button
+                type="button"
+                class="primary-button full-width"
+                onclick="saveAdditionalItems()"
+            >
+                Continue →
+            </button>
+
+        </div>
 
     </section>
 
 
-    <!-- =========================
-         STEP 12 - DRAINAGE PREVIEW
-    ========================== -->
+    <!-- =====================================================
+         STEP 12 - QUOTATION PREVIEW
+    ====================================================== -->
+
     <section class="page" id="page12">
 
         <div class="page-heading">
             <span class="step-number">12</span>
+
             <div>
-                <h2>Drainage Preview</h2>
-                <p>Review drainage requirements.</p>
+                <h2>Quotation Preview</h2>
+                <p>Review the quotation before entering client details.</p>
             </div>
         </div>
 
         <div class="card">
 
-            <div id="drainagePreview"></div>
+            <div id="quotationPreview"></div>
 
-            <button class="primary-button full-width" onclick="goToRates()">
-                Proceed to Material Rates →
+            <button
+                type="button"
+                class="primary-button full-width"
+                onclick="goToClientDetails()"
+            >
+                Proceed to Client Details →
             </button>
 
         </div>
@@ -348,204 +473,78 @@
     </section>
 
 
-    <!-- =========================
-         STEP 13 - RATES
-    ========================== -->
+    <!-- =====================================================
+         STEP 13 - CLIENT DETAILS
+    ====================================================== -->
+
     <section class="page" id="page13">
 
         <div class="page-heading">
             <span class="step-number">13</span>
+
             <div>
-                <h2>Material Rates</h2>
-                <p>Enter the rates used for the quotation.</p>
+                <h2>Client Details</h2>
+                <p>Enter the information to appear on the quotation.</p>
             </div>
         </div>
 
         <div class="card">
 
-            <label>
-                Copper & Accessories Rate / Metre
-                <input
-                    type="number"
-                    id="copperRate"
-                    min="0"
-                    step="0.01"
-                    placeholder="e.g. 3200"
-                >
-            </label>
-
-            <label>
-                Drainage PVC & Accessories Rate / Metre
-                <input
-                    type="number"
-                    id="drainageRate"
-                    min="0"
-                    step="0.01"
-                    placeholder="e.g. 500"
-                >
-            </label>
-
-            <button class="primary-button full-width" onclick="saveRates()">
-                Save Rates & Continue
-            </button>
-
-        </div>
-
-    </section>
-
-
-    <!-- =========================
-         STEP 14 - ADDITIONAL ITEMS
-    ========================== -->
-    <section class="page" id="page14">
-
-        <div class="page-heading">
-            <span class="step-number">14</span>
-            <div>
-                <h2>Additional Items</h2>
-                <p>Add testing, commissioning, drawings or any other work.</p>
-            </div>
-        </div>
-
-        <div class="card">
-
-            <label>
-                Item Name
-                <input
-                    type="text"
-                    id="extraItemName"
-                    placeholder="e.g. Testing and Commissioning"
-                >
-            </label>
-
-            <label>
-                Quantity
-                <input
-                    type="number"
-                    id="extraItemQty"
-                    min="0"
-                    step="0.01"
-                    placeholder="1"
-                >
-            </label>
-
-            <label>
-                Unit
-                <input
-                    type="text"
-                    id="extraItemUnit"
-                    placeholder="lot"
-                >
-            </label>
-
-            <label>
-                Unit Price
-                <input
-                    type="number"
-                    id="extraItemPrice"
-                    min="0"
-                    step="0.01"
-                    placeholder="0.00"
-                >
-            </label>
-
-            <div class="calculated-total">
-                Total Cost:
-                <strong id="extraItemTotal">KES 0.00</strong>
-            </div>
-
-            <button class="secondary-button full-width" onclick="calculateExtraItem()">
-                Calculate Item Total
-            </button>
-
-            <button class="primary-button full-width" onclick="saveExtraItem()">
-                Save Item
-            </button>
-
-        </div>
-
-        <div class="card">
-
-            <h3>Saved Additional Items</h3>
-
-            <div id="additionalItemsPreview"></div>
-
-            <button class="primary-button full-width" onclick="goToClientDetails()">
-                Continue to Client Details →
-            </button>
-
-        </div>
-
-    </section>
-
-
-    <!-- =========================
-         STEP 15 - CLIENT DETAILS
-    ========================== -->
-    <section class="page" id="page15">
-
-        <div class="page-heading">
-            <span class="step-number">15</span>
-            <div>
-                <h2>Quotation Details</h2>
-                <p>Enter client and sales person information.</p>
-            </div>
-        </div>
-
-        <div class="card">
-
-            <h3>Client Information</h3>
-
-            <label>
+            <label for="clientName">
                 Client Name
-                <input
-                    type="text"
-                    id="clientName"
-                    placeholder="Client name"
-                >
             </label>
 
-            <label>
+            <input
+                id="clientName"
+                type="text"
+                placeholder="Client name"
+            >
+
+            <label for="installationLocation">
                 Installation Location
-                <input
-                    type="text"
-                    id="installationLocation"
-                    placeholder="Installation location"
-                >
             </label>
 
-            <hr>
+            <input
+                id="installationLocation"
+                type="text"
+                placeholder="Installation location"
+            >
 
-            <h3>Sales Person</h3>
-
-            <label>
-                Sales Person Name
-                <input
-                    type="text"
-                    id="salesPerson"
-                    placeholder="Sales person name"
-                >
+            <label for="salesPerson">
+                Sales Person
             </label>
 
-            <label>
-                Phone Number
-                <input
-                    type="tel"
-                    id="salesPhone"
-                    placeholder="Phone number"
-                >
+            <input
+                id="salesPerson"
+                type="text"
+                placeholder="Sales person"
+            >
+
+            <label for="salesPhone">
+                Sales Phone
             </label>
 
-            <label>
-                Email
-                <input
-                    type="email"
-                    id="salesEmail"
-                    placeholder="Email address"
-                >
+            <input
+                id="salesPhone"
+                type="tel"
+                placeholder="Phone number"
+            >
+
+            <label for="salesEmail">
+                Sales Email
             </label>
 
-            <button class="primary-button full-width" onclick="generateQuotation()">
+            <input
+                id="salesEmail"
+                type="email"
+                placeholder="Email address"
+            >
+
+            <button
+                type="button"
+                class="primary-button full-width"
+                onclick="generateQuotation()"
+            >
                 Generate Quotation PDF
             </button>
 
@@ -554,27 +553,30 @@
     </section>
 
 
-    <!-- =========================
-         SUCCESS
-    ========================== -->
-    <section class="page" id="successPage">
+    <!-- =====================================================
+         SUCCESS PAGE
+    ====================================================== -->
 
-        <div class="success-card">
+    <section class="page" id="page14">
 
-            <div class="success-icon">✓</div>
+        <div class="card success-card">
+
+            <div class="success-icon">
+                ✓
+            </div>
 
             <h2>Quotation Generated</h2>
 
             <p>
-                Your HVAC quotation has been generated successfully.
+                Your quotation PDF has been generated successfully.
             </p>
 
-            <button class="primary-button" onclick="generateQuotation()">
-                Generate PDF Again
-            </button>
-
-            <button class="secondary-button" onclick="startNewQuotation()">
-                New Quotation
+            <button
+                type="button"
+                class="primary-button full-width"
+                onclick="startNewQuotation()"
+            >
+                Make Another Quotation
             </button>
 
         </div>
@@ -587,12 +589,15 @@
 <footer class="site-footer">
 
     <p>
-        © <span id="currentYear"></span> Moses Ntella Taa
+        © <span id="currentYear"></span>
+        Moses Ntella Taa
     </p>
 
-    <a href="mailto:hvacmsaintern@hotpoint.co.ke">
-        hvacmsaintern@hotpoint.co.ke
-    </a>
+    <p>
+        <a href="mailto:hvacmsaintern@hotpoint.co.ke">
+            hvacmsaintern@hotpoint.co.ke
+        </a>
+    </p>
 
 </footer>
 
