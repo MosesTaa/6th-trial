@@ -17,6 +17,10 @@
     box-sizing: border-box;
 }
 
+html {
+    scroll-behavior: smooth;
+}
+
 body {
     margin: 0;
     font-family: Arial, Helvetica, sans-serif;
@@ -143,7 +147,8 @@ body {
     flex: 1;
 }
 
-input {
+input,
+select {
     width: 100%;
     padding: 13px 14px;
     margin-top: 7px;
@@ -157,7 +162,8 @@ input {
     transition: 0.2s;
 }
 
-input:focus {
+input:focus,
+select:focus {
     border-color: var(--secondary);
     box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.12);
 }
@@ -259,103 +265,47 @@ label {
     flex-wrap: wrap;
 }
 
-.dimension-card,
-.copper-card,
-.cooling-card,
-.drainage-card {
-    background: white;
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 17px;
-    margin-bottom: 14px;
-    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
-}
-
-.dimension-card h3,
-.copper-card h3,
-.cooling-card h3,
-.drainage-card h3 {
-    margin: 0 0 12px;
-    color: var(--primary-dark);
-}
-
-.area-result {
-    background: #ecfeff;
-    border: 1px solid #a5f3fc;
-    border-radius: 9px;
-    padding: 11px;
-    margin-top: 4px;
-    margin-bottom: 10px;
-    font-weight: bold;
-}
-
 .info-box {
-    background: #fffbeb;
-    border-left: 5px solid var(--accent);
-    border-radius: 8px;
-    padding: 13px;
-    margin: 15px 0;
-    color: #78350f;
-}
-
-.calculated-total {
-    background: #ecfdf5;
-    border: 1px solid #bbf7d0;
-    padding: 14px;
-    border-radius: 10px;
-    margin-bottom: 10px;
-}
-
-.calculated-total strong {
-    color: var(--success);
-}
-
-.summary-box {
-    background: #f0f9ff;
+    background: #e0f2fe;
     border: 1px solid #bae6fd;
+    color: #075985;
+    padding: 14px;
     border-radius: 12px;
-    padding: 15px;
-    margin-top: 15px;
+    margin: 15px 0;
+    line-height: 1.6;
 }
 
-.summary-line {
-    display: flex;
-    justify-content: space-between;
-    gap: 10px;
-    padding: 8px 0;
-    border-bottom: 1px dashed #cbd5e1;
-}
-
-.summary-line:last-child {
-    border-bottom: none;
-}
-
-.total-line {
-    font-size: 18px;
-    font-weight: bold;
-    color: var(--primary-dark);
+.empty-message {
+    padding: 20px;
+    text-align: center;
+    color: var(--muted);
 }
 
 .success-card {
-    background: white;
-    padding: 40px 25px;
-    border-radius: 18px;
-    box-shadow: var(--shadow);
     text-align: center;
+    padding: 40px 20px;
 }
 
 .success-icon {
     width: 70px;
     height: 70px;
+    margin: 0 auto 20px;
     border-radius: 50%;
     background: #dcfce7;
     color: var(--success);
     display: flex;
-    align-items: center;
     justify-content: center;
-    margin: 0 auto 20px;
-    font-size: 38px;
+    align-items: center;
+    font-size: 40px;
     font-weight: bold;
+}
+
+.success-card h2 {
+    margin-bottom: 10px;
+}
+
+.success-card p {
+    color: var(--muted);
 }
 
 .site-footer {
@@ -365,39 +315,28 @@ label {
     font-size: 13px;
 }
 
+.site-footer p {
+    margin: 5px 0;
+}
+
 .site-footer a {
     color: var(--primary);
     text-decoration: none;
 }
 
-hr {
-    border: none;
-    border-top: 1px solid var(--border);
-    margin: 25px 0;
-}
-
-.empty-message {
-    text-align: center;
-    padding: 25px;
-    color: var(--muted);
-}
-
-.mini-total {
-    color: var(--success);
-    font-weight: bold;
-}
-
-.capacity-badge {
-    display: inline-block;
-    padding: 5px 9px;
-    border-radius: 20px;
-    background: #dbeafe;
-    color: #1e40af;
-    font-weight: bold;
-    font-size: 13px;
+.site-footer a:hover {
+    text-decoration: underline;
 }
 
 @media (max-width: 600px) {
+
+    .top-header {
+        padding: 20px 14px;
+    }
+
+    .top-header h1 {
+        font-size: 24px;
+    }
 
     .app-container {
         padding: 18px 10px 30px;
@@ -405,10 +344,22 @@ hr {
 
     .card {
         padding: 15px;
+        border-radius: 13px;
+    }
+
+    .page-heading {
+        gap: 10px;
     }
 
     .page-heading h2 {
-        font-size: 20px;
+        font-size: 19px;
+    }
+
+    .step-number {
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
+        font-size: 16px;
     }
 
     .room-card {
@@ -424,11 +375,12 @@ hr {
         flex: 1;
     }
 
-    .summary-line {
-        font-size: 14px;
+    .input-row {
+        align-items: center;
     }
 
-    .top-header h1 {
-        font-size: 24px;
+    .primary-button,
+    .secondary-button {
+        min-height: 46px;
     }
 }
