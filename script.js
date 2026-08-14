@@ -849,25 +849,43 @@ function renderCopperPreview() {
 
 function goToCoolingLoad() {
 
+    if (
+        !quotation.rooms ||
+        quotation.rooms.length === 0
+    ) {
+        alert("No rooms have been added.");
+        showPage(1);
+        return;
+    }
+
     renderCoolingLoadInputs();
 
     showPage(7);
 }
 
 
+/* =========================================================
+   COOLING LOAD INPUTS
+   ========================================================= */
+
 function renderCoolingLoadInputs() {
 
     const container =
-        document.getElementById(
-            "coolingLoadInputs"
-        );
+        document.getElementById("coolingLoadInputs");
 
     if (!container) {
+
         console.error(
-            "Element #coolingLoadInputs not found."
+            "ERROR: #coolingLoadInputs was not found."
         );
+
+        alert(
+            "Cooling Load section could not be loaded. Please check your HTML."
+        );
+
         return;
     }
+
 
     container.innerHTML =
         quotation.rooms.map(
@@ -894,8 +912,8 @@ function renderCoolingLoadInputs() {
 
                             <input
                                 type="number"
-                                min="0"
-                                step="0.01"
+                                min="1"
+                                step="1"
                                 id="factor-${index}"
                                 value="${
                                     room.coolingFactor || ""
@@ -917,6 +935,7 @@ function renderCoolingLoadInputs() {
                     </div>
 
                 `;
+
             }
         ).join("");
 
@@ -929,20 +948,20 @@ function renderCoolingLoadInputs() {
                     `factor-${index}`
                 );
 
-            if (input) {
-
-                input.addEventListener(
-                    "input",
-                    function() {
-
-                        updateCoolingLoadPreview(
-                            index
-                        );
-
-                    }
-                );
-
+            if (!input) {
+                return;
             }
+
+            input.addEventListener(
+                "input",
+                function () {
+
+                    updateCoolingLoadPreview(
+                        index
+                    );
+
+                }
+            );
 
         }
     );
@@ -950,10 +969,13 @@ function renderCoolingLoadInputs() {
 
 
 /* =========================================================
-   LIVE COOLING LOAD CALCULATION
+   LIVE COOLING LOAD
    ========================================================= */
 
 function updateCoolingLoadPreview(index) {
+
+    const room =
+        quotation.rooms[index];
 
     const factorInput =
         document.getElementById(
@@ -965,24 +987,24 @@ function updateCoolingLoadPreview(index) {
             `load-${index}`
         );
 
-    const room =
-        quotation.rooms[index];
 
     if (
+        !room ||
         !factorInput ||
-        !loadOutput ||
-        !room
+        !loadOutput
     ) {
         return;
     }
+
 
     const factor =
         Number(
             factorInput.value
         );
 
+
     if (
-        isNaN(factor) ||
+        !Number.isFinite(factor) ||
         factor <= 0
     ) {
 
@@ -992,9 +1014,11 @@ function updateCoolingLoadPreview(index) {
         return;
     }
 
+
     const load =
         Number(room.area) *
         factor;
+
 
     loadOutput.textContent =
         `${number(load)} BTU/hr`;
@@ -1002,30 +1026,14 @@ function updateCoolingLoadPreview(index) {
 
 
 /* =========================================================
-   AC CAPACITY SELECTION
+   AC CAPACITY RECOMMENDATION
    ========================================================= */
 
 function selectCapacity(load) {
 
-    const capacities = [
-
-        9000,
-
-        12000,
-
-        18000,
-
-        24000,
-
-        36000,
-
-        48000
-
-    ];
-
     for (
         const capacity
-        of capacities
+        of AC_CAPACITIES
     ) {
 
         if (
@@ -1036,7 +1044,10 @@ function selectCapacity(load) {
         }
     }
 
-    return 48000;
+
+    return AC_CAPACITIES[
+        AC_CAPACITIES.length - 1
+    ];
 }
 
 
@@ -1067,12 +1078,17 @@ function previewCoolingLoad() {
     quotation.rooms.forEach(
         (room, index) => {
 
-            const factorInput =
+            const input =
                 document.getElementById(
                     `factor-${index}`
                 );
 
-            if (!factorInput) {
+
+            if (!input) {
+
+                console.error(
+                    `Cooling factor input missing for room ${index + 1}.`
+                );
 
                 valid = false;
 
@@ -1081,13 +1097,11 @@ function previewCoolingLoad() {
 
 
             const factor =
-                Number(
-                    factorInput.value
-                );
+                Number(input.value);
 
 
             if (
-                isNaN(factor) ||
+                !Number.isFinite(factor) ||
                 factor <= 0
             ) {
 
@@ -1110,7 +1124,7 @@ function previewCoolingLoad() {
                 factor;
 
 
-            /* Recommend AC */
+            /* Select recommended AC */
 
             room.capacity =
                 selectCapacity(
@@ -1131,19 +1145,19 @@ function previewCoolingLoad() {
     }
 
 
-    /* Create AC recommendation preview */
+    /* Render recommendation */
 
     renderCoolingLoadPreview();
 
 
-    /* Go to page 8 */
+    /* Open AC recommendation page */
 
     showPage(8);
 }
 
 
 /* =========================================================
-   DISPLAY AC RECOMMENDATIONS
+   AC RECOMMENDATION PREVIEW
    ========================================================= */
 
 function renderCoolingLoadPreview() {
@@ -1157,73 +1171,94 @@ function renderCoolingLoadPreview() {
     if (!container) {
 
         console.error(
-            "Element #coolingLoadPreview not found."
+            "ERROR: #coolingLoadPreview was not found."
+        );
+
+        alert(
+            "AC Recommendation preview could not be displayed. Please check the HTML."
         );
 
         return;
     }
 
 
+    if (
+        !quotation.rooms ||
+        quotation.rooms.length === 0
+    ) {
+
+        container.innerHTML = `
+            <div class="empty-message">
+                No AC recommendations available.
+            </div>
+        `;
+
+        return;
+    }
+
+
     container.innerHTML =
-        quotation.rooms
-            .map(
-                (room, index) => {
+        quotation.rooms.map(
+            (room, index) => {
 
-                    return `
+                return `
 
-                        <div class="preview-item">
+                    <div class="preview-item">
 
+                        <strong>
+                            ${index + 1}.
+                            ${escapeHTML(room.name)}
+                        </strong>
+
+                        <p>
+                            Room Area:
+                            ${number(room.area)} m²
+                        </p>
+
+                        <p>
+                            Cooling Load Factor:
+                            ${number(
+                                room.coolingFactor
+                            )}
+                        </p>
+
+                        <p>
+                            Calculated Cooling Load:
                             <strong>
-                                ${index + 1}.
-                                ${escapeHTML(room.name)}
-                            </strong>
-
-                            <p>
-                                Area:
-                                ${number(room.area)}
-                                m²
-                            </p>
-
-                            <p>
-                                Cooling Load Factor:
                                 ${number(
-                                    room.coolingFactor
+                                    room.coolingLoad
                                 )}
-                            </p>
-
-                            <p>
-                                Calculated Cooling Load:
-                                <strong>
-                                    ${number(
-                                        room.coolingLoad
-                                    )}
-                                    BTU/hr
-                                </strong>
-                            </p>
-
-                            <p>
-                                Recommended AC:
-                            </p>
-
-                            <span class="capacity-badge">
-
-                                ${room.capacity.toLocaleString()}
                                 BTU/hr
+                            </strong>
+                        </p>
 
-                            </span>
+                        <p>
+                            Recommended AC:
+                        </p>
 
-                        </div>
+                        <span class="capacity-badge">
 
-                    `;
+                            ${Number(
+                                room.capacity
+                            ).toLocaleString(
+                                "en-KE"
+                            )}
 
-                }
-            )
-            .join("");
+                            BTU/hr
+
+                        </span>
+
+                    </div>
+
+                `;
+
+            }
+        ).join("");
 }
 
 
 /* =========================================================
-   PROCEED FROM AC RECOMMENDATION TO AC PRICES
+   PROCEED TO AC PRICES
    ========================================================= */
 
 function goToACPrices() {
@@ -1234,15 +1269,43 @@ function goToACPrices() {
     ) {
 
         alert(
-            "No AC recommendations found."
+            "No rooms or AC recommendations found."
         );
 
         return;
     }
 
 
+    /* Check that every room has a recommendation */
+
+    const missingRecommendation =
+        quotation.rooms.some(
+            room =>
+                !room.capacity ||
+                room.capacity <= 0
+        );
+
+
+    if (
+        missingRecommendation
+    ) {
+
+        alert(
+            "AC recommendations have not been calculated yet. Please go back and preview the AC recommendations."
+        );
+
+        showPage(7);
+
+        return;
+    }
+
+
+    /* Render AC price inputs */
+
     renderACPriceInputs();
 
+
+    /* Move to AC price page */
 
     showPage(9);
 }
